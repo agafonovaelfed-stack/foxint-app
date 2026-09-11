@@ -1,6 +1,5 @@
 /* Foxint AI — лендинг: частицы, меню, анимации */
 
-/* === NAV BURGER === */
 (function(){
   const burger = document.getElementById('navBurger');
   const links = document.querySelector('.nav-links');
@@ -12,7 +11,6 @@
   });
 })();
 
-/* === ЧАСТИЦЫ (простая версия для лендинга) === */
 (function(){
   const canvas = document.getElementById('particles');
   if (!canvas) return;
@@ -70,7 +68,6 @@
   draw();
 })();
 
-/* === SCROLL-ANIMATIONS === */
 (function(){
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(e => {
@@ -90,7 +87,6 @@
   });
 })();
 
-/* === ЛОГ ЗАГРУЗКИ APK === */
 (function(){
   document.querySelectorAll('a[download][href$=".apk"]').forEach(a => {
     a.addEventListener('click', () => {

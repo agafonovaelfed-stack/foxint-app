@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0203">
+<title>Политика конфиденциальности — Foxint AI</title>
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .privacy-page{
+    max-width:760px;margin:0 auto;
+    padding:120px 24px 80px;
+    position:relative;z-index:1;
+  }
+  .privacy-page h1{
+    font-family:'Fraunces',serif;
+    font-size:clamp(32px,5vw,44px);font-weight:600;
+    letter-spacing:-1px;line-height:1.15;
+    margin-bottom:8px;
+  }
+  .privacy-page .meta{
+    color:var(--muted);font-size:13.5px;
+    margin-bottom:40px;
+    padding-bottom:20px;
+    border-bottom:1px solid var(--line);
+  }
+  .privacy-page h2{
+    font-family:'Fraunces',serif;
+    font-size:22px;font-weight:600;
+    letter-spacing:-.3px;
+    margin:36px 0 12px;
+    color:var(--ink);
+  }
+  .privacy-page p{
+    font-size:15px;line-height:1.75;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  .privacy-page ul{
+    margin:12px 0 20px 22px;
+    color:var(--ink-soft);
+  }
+  .privacy-page li{
+    font-size:15px;line-height:1.75;
+    margin-bottom:8px;
+  }
+  .privacy-page a{
+    color:var(--coral);
+    text-decoration:none;
+    font-weight:500;
+  }
+  .privacy-page a:hover{text-decoration:underline}
+  .privacy-page code{
+    background:var(--surface);
+    border:1px solid var(--line);
+    padding:2px 7px;border-radius:6px;
+    font-family:ui-monospace,Menlo,monospace;
+    font-size:13px;color:var(--coral);
+  }
+  .back-link{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:10px 16px;border-radius:12px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--ink-soft);text-decoration:none;
+    font-size:13.5px;font-weight:500;
+    margin-bottom:32px;
+    transition:all .2s;
+  }
+  .back-link:hover{color:var(--coral);border-color:var(--line-strong)}
+  .back-link svg{width:16px;height:16px}
+  .privacy-footer{
+    margin-top:60px;padding-top:24px;
+    border-top:1px solid var(--line);
+    color:var(--muted);font-size:13px;
+    text-align:center;
+  }
+  .privacy-footer b{color:var(--coral);font-weight:600}
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-logo"><img src="logo.png" alt="Foxint AI"></div>
+      <div class="brand-name">Foxint AI</div>
+    </div>
+    <nav class="nav-links">
+      <a href="/">Главная</a>
+      <a href="/app">Приложение</a>
+      <a href="/app" class="nav-cta">Открыть</a>
+    </nav>
+  </div>
+</header>
+
+<main class="privacy-page">
+  <a href="/" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    На главную
+  </a>
+
+  <h1>Политика конфиденциальности</h1>
+  <div class="meta">Последнее обновление: 12 сентября 2026</div>
+
+  <p>Настоящая Политика конфиденциальности описывает, какие данные собирает приложение <b>Foxint AI</b> (далее — «Приложение»), как они используются и защищаются. Используя Приложение, вы соглашаетесь с условиями настоящей Политики.</p>
+
+  <h2>1. Разработчик</h2>
+  <p>Приложение разработано и поддерживается <b>redantonov</b> (далее — «Разработчик»).</p>
+  <ul>
+    <li>Контакт для связи: <a href="https://t.me/redantonov" target="_blank" rel="noopener">@redantonov</a> в Telegram</li>
+    <li>Telegram-канал: <a href="https://t.me/foxintai" target="_blank" rel="noopener">@foxintai</a></li>
+  </ul>
+
+  <h2>2. Какие данные мы собираем</h2>
+  <p>Приложение собирает минимально необходимый объём данных:</p>
+  <ul>
+    <li><b>Email и пароль</b> — при регистрации. Пароль хранится в зашифрованном виде. Email используется для входа и восстановления доступа.</li>
+    <li><b>История чатов</b> — сообщения, которые вы отправляете AI-ассистенту, сохраняются для синхронизации между устройствами.</li>
+    <li><b>Технические данные</b> — сведения об устройстве и ошибках, если они возникают.</li>
+  </ul>
+  <p>Приложение <b>не запрашивает</b>: доступ к контактам, SMS, геолокации устройства, камере, микрофону (кроме момента использования голосового ввода по вашему нажатию), файловой системе за пределами явно выбранных вами файлов.</p>
+
+  <h2>3. Как мы используем данные</h2>
+  <ul>
+    <li>Для аутентификации и предоставления доступа к Приложению</li>
+    <li>Для синхронизации истории чатов между вашими устройствами</li>
+    <li>Для обработки запросов к AI-ассистенту и OSINT-функциям</li>
+    <li>Для связи с вами по вопросам работы Приложения</li>
+  </ul>
+
+  <h2>4. Где хранятся данные</h2>
+  <p>Данные пользователей хранятся на серверах <b>Supabase</b> (регион Frankfurt, ЕС), защищённых шифрованием в покое и при передаче (TLS).</p>
+  <p>Запросы к AI-ассистенту и OSINT-функциям обрабатываются через прокси-сервер на <b>Render</b> и передаются в сервисы:</p>
+  <ul>
+    <li>GigaChat (Сбер) — для генерации ответов AI</li>
+    <li>Публичные API для геолокации IP, DNS и проверки утечек</li>
+  </ul>
+  <p>Мы <b>не продаём и не передаём</b> ваши данные третьим лицам, кроме случаев, необходимых для работы Приложения (перечислены выше).</p>
+
+  <h2>5. OSINT-функции</h2>
+  <p>Приложение предоставляет инструменты для анализа <b>открытых источников</b>:</p>
+  <ul>
+    <li><code>.u ник</code> — поиск username на публичных платформах</li>
+    <li><code>.i ip</code> — геолокация IP-адреса</li>
+    <li><code>.e email</code> — проверка email и MX-записей</li>
+    <li><code>.d domain</code> — DNS-разбор домена</li>
+    <li><code>.b email</code> — проверка email в публичных базах утечек</li>
+  </ul>
+  <p>Все данные берутся из <b>публично доступных источников</b>. Приложение не осуществляет взлом, не использует закрытые базы данных и не хранит персональные данные третьих лиц.</p>
+
+  <h2>6. Файлы</h2>
+  <p>Пользователь может прикрепить к чату <b>текстовые файлы</b> (.txt, .md, .json, .js, .py и другие). Файлы обрабатываются локально на устройстве и передаются в AI-модель только для обработки вашего запроса. Содержимое файлов не хранится на серверах Разработчика дольше, чем это необходимо для ответа.</p>
+  <p>Приложение <b>не принимает</b> изображения, видео, аудио и бинарные форматы.</p>
+
+  <h2>7. Файлы cookie и локальное хранилище</h2>
+  <p>Приложение использует <code>localStorage</code> вашего браузера или устройства для:</p>
+  <ul>
+    <li>Сохранения сессии авторизации</li>
+    <li>Хранения настроек (тема, шрифт, режим)</li>
+    <li>Черновика сообщения и локальной копии чатов</li>
+  </ul>
+  <p>Эти данные хранятся только на вашем устройстве и не передаются автоматически.</p>
+
+  <h2>8. Права пользователя</h2>
+  <p>Вы имеете право:</p>
+  <ul>
+    <li>Запросить копию своих данных</li>
+    <li>Удалить свой аккаунт и все связанные данные</li>
+    <li>Исправлять неточности в данных</li>
+    <li>Отозвать согласие на обработку данных</li>
+  </ul>
+  <p>Для реализации этих прав свяжитесь с Разработчиком: <a href="https://t.me/redantonov" target="_blank" rel="noopener">@redantonov</a>.</p>
+  <p>Кнопка <b>«Удалить всё»</b> в настройках Приложения немедленно удаляет все локальные данные с вашего устройства.</p>
+
+  <h2>9. Безопасность</h2>
+  <p>Мы применяем следующие меры защиты:</p>
+  <ul>
+    <li>Пароли хешируются алгоритмом bcrypt (стандарт Supabase Auth)</li>
+    <li>Соединение защищено HTTPS/TLS 1.3</li>
+    <li>Row Level Security в базе данных — каждый пользователь видит только свои данные</li>
+    <li>Токены авторизации обновляются автоматически</li>
+  </ul>
+
+  <h2>10. Дети</h2>
+  <p>Приложение не предназначено для детей младше 13 лет. Если вы родитель и считаете, что ваш ребёнок предоставил нам личные данные без вашего согласия, свяжитесь с Разработчиком — мы удалим их.</p>
+
+  <h2>11. Изменения политики</h2>
+  <p>Разработчик может обновлять настоящую Политику. Актуальная версия всегда доступна по адресу <code>/privacy.html</code>. Дата последнего обновления указана в начале документа.</p>
+
+  <h2>12. Контакты</h2>
+  <p>По всем вопросам, связанным с обработкой персональных данных:</p>
+  <ul>
+    <li>Telegram: <a href="https://t.me/redantonov" target="_blank" rel="noopener">@redantonov</a></li>
+    <li>Канал Foxint: <a href="https://t.me/foxintai" target="_blank" rel="noopener">@foxintai</a></li>
+  </ul>
+
+  <div class="privacy-footer">
+    © 2026 Foxint AI · Разработано <b>redantonov</b>
+  </div>
+</main>
+
+<div class="watermark">redantonov</div>
+
+<script src="script.js"></script>
+</body>
+</html>

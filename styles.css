@@ -40,7 +40,6 @@ body::before{
     radial-gradient(600px 500px at 50% 50%, rgba(255,85,102,.05) 0%, transparent 60%);
 }
 
-/* NAV */
 .nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
   background:rgba(10,2,3,.75);
@@ -89,7 +88,6 @@ body::before{
 }
 .nav-burger svg{width:20px;height:20px}
 
-/* HERO */
 .hero{
   position:relative;z-index:1;
   padding:120px 20px 60px;
@@ -188,7 +186,6 @@ body::before{
 }
 .stat-label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:500}
 
-/* SECTIONS */
 .section-inner{max-width:1200px;margin:0 auto;padding:0 20px}
 .section-title{
   font-family:'Fraunces',serif;
@@ -201,7 +198,6 @@ body::before{
   max-width:560px;margin:0 auto 48px;line-height:1.6;
 }
 
-/* FEATURES */
 .features{
   position:relative;z-index:1;
   padding:80px 20px;
@@ -254,7 +250,6 @@ body::before{
   border:1px solid var(--line);
 }
 
-/* DOWNLOAD */
 .download{
   position:relative;z-index:1;
   padding:60px 20px 100px;
@@ -317,7 +312,6 @@ body::before{
 .os-item a{color:var(--coral);text-decoration:none;font-weight:600}
 .os-item a:hover{text-decoration:underline}
 
-/* FAQ */
 .faq{
   position:relative;z-index:1;
   padding:60px 20px 100px;
@@ -360,7 +354,6 @@ body::before{
 .faq-item p a{color:var(--coral);text-decoration:none;font-weight:500}
 .faq-item p a:hover{text-decoration:underline}
 
-/* CTA */
 .cta{
   position:relative;z-index:1;
   padding:60px 20px 100px;
@@ -377,7 +370,6 @@ body::before{
   flex-wrap:wrap;
 }
 
-/* FOOTER */
 .footer{
   position:relative;z-index:1;
   background:var(--surface);
@@ -403,8 +395,29 @@ body::before{
 }
 .footer-links a:hover{color:var(--coral)}
 .footer-copy{font-size:12.5px;color:var(--muted)}
+.footer-copy b{color:var(--coral);font-weight:600}
 
-/* MOBILE */
+/* ============ ВОДЯНОЙ ЗНАК ============ */
+.watermark{
+  position:fixed;
+  right:16px;
+  bottom:80px;
+  z-index:2;
+  pointer-events:none;
+  user-select:none;
+  font-family:'Fraunces',serif;
+  font-weight:600;
+  font-size:13px;
+  letter-spacing:6px;
+  color:var(--coral);
+  opacity:.12;
+  writing-mode:vertical-rl;
+  text-orientation:mixed;
+  transform:rotate(180deg);
+  white-space:nowrap;
+  text-transform:lowercase;
+}
+
 @media (max-width: 720px){
   .nav-links{
     position:fixed;top:calc(66px + env(safe-area-inset-top));
@@ -469,6 +482,14 @@ body::before{
 
   .footer-inner{flex-direction:column;text-align:center;gap:16px}
   .footer-links{justify-content:center}
+
+  .watermark{
+    right:10px;
+    bottom:60px;
+    font-size:11px;
+    letter-spacing:4px;
+    opacity:.10;
+  }
 }
 
 @media (max-width: 400px){
