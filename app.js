@@ -1,6 +1,7 @@
-/* Foxint AI — v16 (with Auth) */
+/* Foxint AI — v17 (mobile optimized) */
 
 const CONFIG = { PROXY: 'https://foxint-ai-proxy.onrender.com', MODEL: 'GigaChat' };
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 720;
 
 const SYSTEM_PROMPT = `Ты — Foxint. OSINT-ассистент для расследований, проверки людей и компаний.
 
@@ -50,7 +51,6 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtSize = b => b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB';
 
-/* === DOM === */
 const $ = id => document.getElementById(id);
 const chatEl = $('chat'), input = $('input'), send = $('send');
 const dot = $('dot'), statusText = $('statusText');
@@ -96,16 +96,11 @@ function fmtMessage(t){
   return h;
 }
 
-/* === ЧАТЫ === */
 async function loadChats(){
   if (window.FoxAuth?.getCurrentUser()){
     try {
       const cloudChats = await window.FoxAuth.cloudLoadChats();
-      if (cloudChats.length){
-        chats = cloudChats;
-        activeChatId = chats[0].id;
-        return;
-      }
+      if (cloudChats.length){ chats = cloudChats; activeChatId = chats[0].id; return; }
       let localChats = [];
       try { const r = localStorage.getItem('foxint.chats'); if (r) localChats = JSON.parse(r); } catch(_) {}
       if (localChats.length){
@@ -113,14 +108,11 @@ async function loadChats(){
           const newId = await window.FoxAuth.cloudSaveChat(c);
           if (newId) c.id = newId;
         }
-        chats = localChats;
-        activeChatId = chats[0].id;
+        chats = localChats; activeChatId = chats[0].id;
         console.log('[Foxint] Локальные чаты перенесены в облако:', chats.length);
         return;
       }
-    } catch(e){
-      console.warn('[Foxint] Облако недоступно, fallback:', e.message);
-    }
+    } catch(e){ console.warn('[Foxint] Облако недоступно:', e.message); }
   }
   try { const r = localStorage.getItem('foxint.chats'); if (r) chats = JSON.parse(r); } catch(_) { chats = []; }
   if (!Array.isArray(chats)) chats = [];
@@ -233,7 +225,6 @@ function renderChatsList(){
   });
 }
 
-/* === ТЕМЫ === */
 function applyTheme(id){
   const t = THEMES[id]; if (!t) return;
   document.body.dataset.theme = id;
@@ -255,7 +246,6 @@ function buildThemeGrid(){
   });
 }
 
-/* === НАСТРОЙКИ === */
 function openSettings(){ settings.classList.add('show'); backdrop.classList.add('show'); }
 function closeSettingsPanel(){ settings.classList.remove('show'); backdrop.classList.remove('show'); }
 settingsBtn.addEventListener('click', openSettings);
@@ -282,7 +272,6 @@ document.addEventListener('click', (e) => {
   else if (btn.id === 'wipeBtn') openWipeConfirm();
 });
 
-/* === РЕЖИМЫ === */
 document.querySelectorAll('.mode-pill').forEach(m => {
   m.addEventListener('click', () => {
     document.querySelectorAll('.mode-pill').forEach(x => x.classList.remove('active'));
@@ -293,7 +282,6 @@ document.querySelectorAll('.mode-pill').forEach(m => {
   });
 });
 
-/* === ЧАСТИЦЫ === */
 const particles = {
   ctx: canvas.getContext('2d'),
   dpr: Math.min(window.devicePixelRatio || 1, 2),
@@ -303,12 +291,13 @@ const particles = {
     this.type = t; this.resize(); this.items = [];
     if (t === 'none') return;
     const a = this.w * this.h;
+    const density = IS_MOBILE ? 16000 : 8000;
     let n = 0;
-    if (t === 'blood') n = Math.min(130, a/8000|0);
-    if (t === 'ocean') n = Math.min(110, a/10000|0);
-    if (t === 'aurora') n = Math.min(160, a/7500|0);
-    if (t === 'sakura') n = Math.min(70, a/14000|0);
-    if (t === 'midnight') n = Math.min(100, a/11000|0);
+    if (t === 'blood') n = Math.min(IS_MOBILE ? 60 : 130, a/density|0);
+    if (t === 'ocean') n = Math.min(IS_MOBILE ? 50 : 110, a/(density*1.2)|0);
+    if (t === 'aurora') n = Math.min(IS_MOBILE ? 70 : 160, a/(density*0.9)|0);
+    if (t === 'sakura') n = Math.min(IS_MOBILE ? 35 : 70, a/(density*1.8)|0);
+    if (t === 'midnight') n = Math.min(IS_MOBILE ? 45 : 100, a/(density*1.4)|0);
     for (let i = 0; i < n; i++) this.items.push(this.one(t));
   },
   one(t){
@@ -376,7 +365,6 @@ function setupParticles(type){ particles.spawn(type); updateParticlesVisibility(
 let rt;
 addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (particles.type && particles.type !== 'none') particles.spawn(particles.type); }, 200); });
 
-/* === ВЛОЖЕНИЯ === */
 attachBtn.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', async e => {
   const fs = Array.from(e.target.files || []);
@@ -410,18 +398,19 @@ function renderAttachPreview(){
   });
 }
 
-/* === INPUT === */
 input.addEventListener('input', () => {
   input.style.height = 'auto';
-  input.style.height = Math.min(input.scrollHeight, 130) + 'px';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   updateSend();
 });
-input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); } });
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !IS_MOBILE){ e.preventDefault(); sendMsg(); } });
+input.addEventListener('focus', () => {
+  setTimeout(() => { if (IS_MOBILE) input.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, 300);
+});
 send.addEventListener('click', sendMsg);
 function updateSend(){ send.disabled = !input.value.trim() && attachments.length === 0; }
-function setStatus(ok, text){ dot.classList.toggle('off', !ok); statusText.textContent = text; }
+function setStatus(ok, text){ if (dot) dot.classList.toggle('off', !ok); if (statusText) statusText.textContent = text; }
 
-/* === СООБЩЕНИЯ === */
 function appendMsg(role, text, opts = {}){
   const d = document.createElement('div');
   d.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
@@ -436,7 +425,6 @@ function appendMsg(role, text, opts = {}){
   scrollBottom();
 }
 
-/* === FOXTHINK === */
 function detectScenario(text, mode){
   const t = (text||'').toLowerCase();
   if (/^\.u\s/.test(text) || /^\.i\s/.test(text) || /^\.e\s/.test(text) || /^\.d\s/.test(text) || /^\.b\s/.test(text)) return 'osint';
@@ -502,7 +490,6 @@ function hideTyping(){
   foxthinkState = null;
 }
 
-/* === OSINT === */
 async function osintUsername(u){ const r = await fetch(`${CONFIG.PROXY}/osint/username?u=${encodeURIComponent(u)}`); return r.json(); }
 async function osintEmail(e){ const r = await fetch(`${CONFIG.PROXY}/osint/email?email=${encodeURIComponent(e)}`); return r.json(); }
 async function osintDomain(d){ const r = await fetch(`${CONFIG.PROXY}/osint/domain?d=${encodeURIComponent(d)}`); return r.json(); }
@@ -512,7 +499,7 @@ async function osintBreaches(e){ const r = await fetch(`${CONFIG.PROXY}/osint/br
 function renderUsernameResult(d){
   const found = d.results.filter(x => x.found);
   let h = `<div class="osint-result"><div class="osint-head"><div class="osint-title">Username: <b>${esc(d.query)}</b></div><div class="osint-badge ${found.length ? 'ok' : 'empty'}">${found.length} из ${d.results.length}</div></div>`;
-  if (found.length){ h += '<ol class="osint-list">'; found.forEach(f => { h += `<li><a href="${f.url}" target="_blank">${esc(f.platform)}</a> <span class="osint-url">${esc(f.url)}</span></li>`; }); h += '</ol>'; }
+  if (found.length){ h += '<ol class="osint-list">'; found.forEach(f => { h += `<li><a href="${f.url}" target="_blank" rel="noopener">${esc(f.platform)}</a> <span class="osint-url">${esc(f.url)}</span></li>`; }); h += '</ol>'; }
   else h += `<div class="osint-empty">Ничего не найдено.</div>`;
   return h + '</div>';
 }
@@ -548,7 +535,6 @@ function renderBreachResult(d){
   return h + '</ol></div>';
 }
 
-/* === GIGACHAT === */
 async function gcGetToken(){
   if (gcToken && Date.now() < gcTokenExp - 60000) return gcToken;
   const r = await fetch(`${CONFIG.PROXY}/oauth`, { method: 'POST' });
@@ -577,7 +563,6 @@ async function askGigaChat(text){
   return d.choices?.[0]?.message?.content || 'Пустой ответ';
 }
 
-/* === ЭКСПОРТ === */
 function openExportMenu(){
   closeSettingsPanel();
   let menu = document.getElementById('exportMenu');
@@ -585,15 +570,7 @@ function openExportMenu(){
     menu = document.createElement('div');
     menu.className = 'export-menu';
     menu.id = 'exportMenu';
-    menu.innerHTML = `
-      <div class="export-panel">
-        <div class="export-title">Экспорт диалога</div>
-        <div class="export-sub">Выбери формат</div>
-        <button class="export-option" data-fmt="md"><div class="export-option-icon">MD</div><div class="export-option-info"><b>Markdown</b><span>Заголовки, списки</span></div></button>
-        <button class="export-option" data-fmt="txt"><div class="export-option-icon">TXT</div><div class="export-option-info"><b>Обычный текст</b><span>Простой формат</span></div></button>
-        <button class="export-option" data-fmt="json"><div class="export-option-icon">{}</div><div class="export-option-info"><b>JSON</b><span>Данные</span></div></button>
-        <button class="export-cancel" id="exportCancel">Отмена</button>
-      </div>`;
+    menu.innerHTML = `<div class="export-panel"><div class="export-title">Экспорт диалога</div><div class="export-sub">Выбери формат</div><button class="export-option" data-fmt="md"><div class="export-option-icon">MD</div><div class="export-option-info"><b>Markdown</b><span>Заголовки, списки</span></div></button><button class="export-option" data-fmt="txt"><div class="export-option-icon">TXT</div><div class="export-option-info"><b>Обычный текст</b><span>Простой формат</span></div></button><button class="export-option" data-fmt="json"><div class="export-option-icon">{}</div><div class="export-option-info"><b>JSON</b><span>Данные</span></div></button><button class="export-cancel" id="exportCancel">Отмена</button></div>`;
     document.body.appendChild(menu);
     menu.addEventListener('click', e => { if (e.target === menu) closeExportMenu(); });
     menu.querySelectorAll('[data-fmt]').forEach(btn => btn.addEventListener('click', () => exportChat(btn.dataset.fmt)));
@@ -618,7 +595,6 @@ async function exportChat(fmt){
   closeExportMenu();
 }
 
-/* === WIPE === */
 function openWipeConfirm(){
   closeSettingsPanel();
   let modal = document.getElementById('wipeConfirm');
@@ -626,16 +602,7 @@ function openWipeConfirm(){
     modal = document.createElement('div');
     modal.className = 'wipe-confirm';
     modal.id = 'wipeConfirm';
-    modal.innerHTML = `
-      <div class="wipe-panel">
-        <div class="wipe-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div>
-        <div class="wipe-title">Удалить все данные?</div>
-        <div class="wipe-text">Все диалоги и настройки будут стёрты.</div>
-        <div class="wipe-actions">
-          <button class="wipe-btn" id="wipeCancel">Отмена</button>
-          <button class="wipe-btn danger" id="wipeConfirmBtn">Удалить</button>
-        </div>
-      </div>`;
+    modal.innerHTML = `<div class="wipe-panel"><div class="wipe-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></div><div class="wipe-title">Удалить все данные?</div><div class="wipe-text">Все диалоги и настройки будут стёрты.</div><div class="wipe-actions"><button class="wipe-btn" id="wipeCancel">Отмена</button><button class="wipe-btn danger" id="wipeConfirmBtn">Удалить</button></div></div>`;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
     document.getElementById('wipeCancel').addEventListener('click', () => modal.classList.remove('show'));
@@ -644,24 +611,18 @@ function openWipeConfirm(){
   modal.classList.add('show');
 }
 
-/* === GRAPH === */
 const graphState = {
   nodes: [], edges: [], selectedNode: null, selectedEdge: null,
   dragging: null, linking: null, drawingLink: null, nextId: 1,
   canvas: null, ctx: null, width: 0, height: 0,
-  frozen: false,
   panX: 0, panY: 0, zoom: 1, panning: false, panStart: null,
   hoverNode: null, hoverEdge: null,
   colors: ['#4a4a5e','#6a6a80','#8a8aa0','#a78bfa','#60a5fa','#34d399','#fbbf24','#f472b6','#f87171','#22d3ee']
 };
-const NODE_W = 90;
-const NODE_H = 40;
-const NODE_PAD_X = 22;
-
+const NODE_W = 90, NODE_H = 40, NODE_PAD_X = 22;
 function nodeBounds(n){
   const w = Math.max(NODE_W, n.label.length * 7.5 + NODE_PAD_X * 2);
-  const h = NODE_H;
-  return { x: n.x - w/2, y: n.y - h/2, w, h };
+  return { x: n.x - w/2, y: n.y - NODE_H/2, w, h: NODE_H };
 }
 function openGraphScreen(){
   closeSettingsPanel();
@@ -682,11 +643,21 @@ function openGraphScreen(){
           <button class="graph-btn graph-btn-close" id="graphClose">×</button>
         </div>
       </div>
+      <button class="graph-sidebar-toggle" id="graphSidebarToggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="graph-hint">Двойной клик — нода · Shift+клик — связь · Правый клик — меню</div>
       <div class="graph-body">
         <canvas id="graphCanvas"></canvas>
+        <aside class="graph-sidebar" id="graphSidebar">
+          <div class="graph-sidebar-section"><div class="graph-sidebar-title">Поиск</div><input class="graph-search" id="graphSearch" placeholder="Найти ноду..."></div>
+          <div class="graph-sidebar-section"><div class="graph-sidebar-title">Ноды (<span id="graphNodesCount">0</span>)</div><div class="graph-nodes-list" id="graphNodesList"></div></div>
+          <div class="graph-sidebar-section" id="graphInspector"><div class="graph-sidebar-title">Свойства</div><div class="graph-inspector-empty">Выбери ноду</div></div>
+        </aside>
       </div>`;
     document.body.appendChild(screen);
     initGraphEvents();
+    if (!IS_MOBILE) document.getElementById('graphSidebar').classList.add('open');
   }
   screen.classList.add('show');
   requestAnimationFrame(() => { resizeGraphCanvas(); drawGraph(); });
@@ -717,6 +688,8 @@ function addEdge(a, b){
 function updateGraphStats(){
   const el = document.getElementById('graphStats');
   if (el) el.textContent = graphState.nodes.length + ' нод · ' + graphState.edges.length + ' рёбер';
+  const nc = document.getElementById('graphNodesCount');
+  if (nc) nc.textContent = graphState.nodes.length;
 }
 function roundRect(ctx, x, y, w, h, r){
   ctx.beginPath();
@@ -747,9 +720,9 @@ function drawGraph(){
   ctx.clearRect(0, 0, graphState.width, graphState.height);
   if (!graphState.nodes.length){
     ctx.fillStyle = 'rgba(160,160,185,0.35)';
-    ctx.font = '500 15px Inter, sans-serif';
+    ctx.font = '500 14px Inter, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('Двойной клик по холсту — создать первую ноду', graphState.width/2, graphState.height/2);
+    ctx.fillText('Двойной клик — создать ноду', graphState.width/2, graphState.height/2);
     ctx.restore();
     return;
   }
@@ -761,17 +734,13 @@ function drawGraph(){
     if (!a || !b) continue;
     const pa = edgePoint(a, b.x, b.y);
     const pb = edgePoint(b, a.x, a.y);
-    ctx.strokeStyle = e.color;
-    ctx.lineWidth = e.width;
+    ctx.strokeStyle = e.color; ctx.lineWidth = e.width;
     ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
   }
   for (const n of graphState.nodes){
     const isSel = graphState.selectedNode?.id === n.id;
     const b = nodeBounds(n);
-    const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-    grad.addColorStop(0, n.color);
-    grad.addColorStop(1, n.color);
-    ctx.fillStyle = grad;
+    ctx.fillStyle = n.color;
     roundRect(ctx, b.x, b.y, b.w, b.h, 10); ctx.fill();
     ctx.strokeStyle = isSel ? '#fff' : 'rgba(255,255,255,.25)';
     ctx.lineWidth = isSel ? 2.5 : 1.3;
@@ -801,34 +770,16 @@ function initGraphEvents(){
     const x = e.clientX - r.left, y = e.clientY - r.top;
     const n = hitNode(x, y);
     moved = false;
-    if (n){
-      graphState.selectedNode = n;
-      graphState.dragging = n;
-    } else {
-      graphState.selectedNode = null;
-      graphState.panning = true;
-      panStartX = e.clientX; panStartY = e.clientY;
-      startPanX = graphState.panX; startPanY = graphState.panY;
-    }
+    if (n){ graphState.selectedNode = n; graphState.dragging = n; }
+    else { graphState.selectedNode = null; graphState.panning = true; panStartX = e.clientX; panStartY = e.clientY; startPanX = graphState.panX; startPanY = graphState.panY; }
     drawGraph();
   });
   canvas.addEventListener('mousemove', e => {
     const r = canvas.getBoundingClientRect();
-    if (graphState.panning){
-      graphState.panX = startPanX + (e.clientX - panStartX);
-      graphState.panY = startPanY + (e.clientY - panStartY);
-      drawGraph();
-    } else if (graphState.dragging){
-      graphState.dragging.x = (e.clientX - r.left - graphState.panX) / graphState.zoom;
-      graphState.dragging.y = (e.clientY - r.top - graphState.panY) / graphState.zoom;
-      moved = true; drawGraph();
-    }
+    if (graphState.panning){ graphState.panX = startPanX + (e.clientX - panStartX); graphState.panY = startPanY + (e.clientY - panStartY); drawGraph(); }
+    else if (graphState.dragging){ graphState.dragging.x = (e.clientX - r.left - graphState.panX) / graphState.zoom; graphState.dragging.y = (e.clientY - r.top - graphState.panY) / graphState.zoom; moved = true; drawGraph(); }
   });
-  canvas.addEventListener('mouseup', () => {
-    graphState.dragging = null;
-    graphState.panning = false;
-    drawGraph();
-  });
+  canvas.addEventListener('mouseup', () => { graphState.dragging = null; graphState.panning = false; drawGraph(); });
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const r = canvas.getBoundingClientRect();
@@ -864,25 +815,49 @@ function initGraphEvents(){
       graphState.selectedNode = null; updateGraphStats(); drawGraph();
     }
   });
-  document.getElementById('graphAddNode').addEventListener('click', () => {
-    addNodeAt(graphState.width/2 + (Math.random()-0.5)*200, graphState.height/2 + (Math.random()-0.5)*200);
+  // Touch
+  let touchStartDist = 0, touchStartZoom = 1;
+  canvas.addEventListener('touchstart', e => {
+    const r = canvas.getBoundingClientRect();
+    if (e.touches.length === 2){
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      touchStartDist = Math.hypot(dx, dy);
+      touchStartZoom = graphState.zoom;
+      return;
+    }
+    const t = e.touches[0];
+    const x = t.clientX - r.left, y = t.clientY - r.top;
+    const n = hitNode(x, y);
+    if (n){ graphState.selectedNode = n; graphState.dragging = n; }
+    else { graphState.selectedNode = null; graphState.panning = true; panStartX = t.clientX; panStartY = t.clientY; startPanX = graphState.panX; startPanY = graphState.panY; }
     drawGraph();
-  });
+  }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    const r = canvas.getBoundingClientRect();
+    if (e.touches.length === 2 && touchStartDist){
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      graphState.zoom = Math.max(0.25, Math.min(3, touchStartZoom * (dist / touchStartDist)));
+      drawGraph();
+      return;
+    }
+    const t = e.touches[0];
+    if (graphState.panning){ graphState.panX = startPanX + (t.clientX - panStartX); graphState.panY = startPanY + (t.clientY - panStartY); drawGraph(); }
+    else if (graphState.dragging){ graphState.dragging.x = (t.clientX - r.left - graphState.panX) / graphState.zoom; graphState.dragging.y = (t.clientY - r.top - graphState.panY) / graphState.zoom; drawGraph(); }
+  }, { passive: true });
+  canvas.addEventListener('touchend', () => { graphState.dragging = null; graphState.panning = false; touchStartDist = 0; drawGraph(); });
+
+  document.getElementById('graphAddNode').addEventListener('click', () => { addNodeAt(graphState.width/2 + (Math.random()-0.5)*200, graphState.height/2 + (Math.random()-0.5)*200); drawGraph(); });
   document.getElementById('graphAutoLayout').addEventListener('click', () => {
-    const nodes = graphState.nodes;
-    if (nodes.length < 2) return;
+    const nodes = graphState.nodes; if (nodes.length < 2) return;
     const cx = graphState.width/2, cy = graphState.height/2;
     const radius = Math.min(graphState.width, graphState.height) * 0.3;
-    nodes.forEach((n, i) => {
-      const ang = (i / nodes.length) * Math.PI * 2;
-      n.x = cx + Math.cos(ang) * radius;
-      n.y = cy + Math.sin(ang) * radius;
-    });
+    nodes.forEach((n, i) => { const ang = (i / nodes.length) * Math.PI * 2; n.x = cx + Math.cos(ang) * radius; n.y = cy + Math.sin(ang) * radius; });
     drawGraph();
   });
-  document.getElementById('graphReset').addEventListener('click', () => {
-    graphState.panX = 0; graphState.panY = 0; graphState.zoom = 1; drawGraph();
-  });
+  document.getElementById('graphReset').addEventListener('click', () => { graphState.panX = 0; graphState.panY = 0; graphState.zoom = 1; drawGraph(); });
   document.getElementById('graphExportPng').addEventListener('click', () => {
     const a = document.createElement('a');
     a.href = graphState.canvas.toDataURL('image/png');
@@ -898,24 +873,37 @@ function initGraphEvents(){
     a.click(); URL.revokeObjectURL(a.href);
   });
   document.getElementById('graphClose').addEventListener('click', closeGraphScreen);
+  document.getElementById('graphSidebarToggle').addEventListener('click', () => {
+    document.getElementById('graphSidebar').classList.toggle('open');
+  });
+  document.getElementById('graphSearch').addEventListener('input', () => {
+    const q = document.getElementById('graphSearch').value.trim().toLowerCase();
+    const list = document.getElementById('graphNodesList');
+    list.innerHTML = '';
+    const filtered = q ? graphState.nodes.filter(n => n.label.toLowerCase().includes(q)) : graphState.nodes;
+    filtered.forEach(n => {
+      const item = document.createElement('div');
+      item.className = 'graph-node-item' + (graphState.selectedNode?.id === n.id ? ' active' : '');
+      item.innerHTML = `<span class="graph-node-dot" style="background:${n.color}"></span><span class="graph-node-name">${esc(n.label)}</span>`;
+      item.addEventListener('click', () => { graphState.selectedNode = n; drawGraph(); });
+      list.appendChild(item);
+    });
+  });
   window.addEventListener('resize', resizeGraphCanvas);
 }
 
-/* === SCROLL DOWN === */
 chatEl.addEventListener('scroll', () => {
   const nearBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 200;
   scrollDownBtn.classList.toggle('show', !nearBottom);
 });
 scrollDownBtn.addEventListener('click', () => scrollBottom());
 
-/* === МОДАЛКА === */
 chatsBtn.addEventListener('click', openChatsModal);
 closeChats.addEventListener('click', closeChatsModal);
 chatsModal.addEventListener('click', e => { if (e.target === chatsModal) closeChatsModal(); });
 newChatBtn2.addEventListener('click', newChat);
 chatsSearch.addEventListener('input', renderChatsList);
 
-/* === ОТПРАВКА === */
 async function sendMsg(){
   const text = input.value.trim();
   if (!text && !attachments.length) return;
@@ -944,10 +932,7 @@ async function sendMsg(){
         appendMsg('ai', html, { raw: true });
         c.messages.push({ role: 'assistant', content: html, ts: Date.now(), raw: true });
         c.updatedAt = Date.now(); saveChats();
-      } catch(e){
-        hideTyping();
-        appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true });
-      }
+      } catch(e){ hideTyping(); appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true }); }
       updateSend(); return;
     }
   }
@@ -963,15 +948,10 @@ async function sendMsg(){
     appendMsg('ai', reply);
     c.messages.push({ role: 'assistant', content: reply, ts: Date.now() });
     c.updatedAt = Date.now(); saveChats();
-  } catch(e){
-    hideTyping(); setStatus(false, 'ошибка');
-    appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true });
-  } finally {
-    attachments = []; renderAttachPreview(); updateSend();
-  }
+  } catch(e){ hideTyping(); setStatus(false, 'ошибка'); appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true }); }
+  finally { attachments = []; renderAttachPreview(); updateSend(); }
 }
 
-/* === INIT === */
 buildThemeGrid();
 switchParticles.classList.toggle('on', prefs.particles);
 applyTheme(prefs.theme);
@@ -980,17 +960,11 @@ async function bootApp(user){
   await loadChats();
   renderChat(); updateBadge();
   setStatus(!!CONFIG.PROXY, CONFIG.PROXY ? 'готова' : 'демо');
-  window.addEventListener('load', () => input.focus());
 }
 
 if (window.FoxAuth){
-  window.FoxAuth.onAuth('onLogin', (user) => {
-    updateProfileUI(user);
-    bootApp(user);
-  });
-  window.FoxAuth.onAuth('onLogout', () => {
-    updateProfileUI(null);
-  });
+  window.FoxAuth.onAuth('onLogin', (user) => { updateProfileUI(user); bootApp(user); });
+  window.FoxAuth.onAuth('onLogout', () => { updateProfileUI(null); });
   window.FoxAuth.bootAuth();
 } else {
   bootApp();
@@ -1004,19 +978,15 @@ function updateProfileUI(user){
   if (!user){ section.style.display = 'none'; return; }
   section.style.display = 'block';
   const initial = (user.email || '?')[0].toUpperCase();
-  card.innerHTML = `
-    <div class="profile-avatar">${initial}</div>
-    <div class="profile-info">
-      <div class="profile-email">${esc(user.email || 'пользователь')}</div>
-      <div class="profile-status">Синхронизировано с облаком</div>
-    </div>`;
+  card.innerHTML = `<div class="profile-avatar">${initial}</div><div class="profile-info"><div class="profile-email">${esc(user.email || 'пользователь')}</div><div class="profile-status">Синхронизировано с облаком</div></div>`;
   if (logout && !logout._wired){
     logout._wired = true;
     logout.addEventListener('click', async () => {
       await window.FoxAuth.signOut();
-      chats = []; activeChatId = null;
-      saveChats();
+      chats = []; activeChatId = null; saveChats();
       window.FoxAuth.showAuthScreen();
     });
   }
 }
+
+window.addEventListener('load', () => { if (input && !IS_MOBILE) input.focus(); });
