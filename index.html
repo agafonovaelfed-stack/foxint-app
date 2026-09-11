@@ -2,163 +2,248 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#fdf9f4">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Foxint">
-<meta name="mobile-web-app-capable" content="yes">
-<title>Foxint AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0203">
+<meta name="description" content="Foxint AI — OSINT-ассистент для расследований, проверки людей и компаний, анализа открытых данных. Скачать APK для Android.">
+<meta property="og:title" content="Foxint AI — OSINT-ассистент">
+<meta property="og:description" content="Проверка username, IP, email, домены, утечки. Умный AI-чат. Graph Analysis. Скачай APK.">
+<meta property="og:image" content="/logo.png">
+<meta property="og:type" content="website">
+<title>Foxint AI — OSINT-ассистент для расследований</title>
 <link rel="icon" href="logo.png">
-<link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
-<body data-theme="daylight">
+<body>
+
 <canvas id="particles"></canvas>
-<div id="app">
-  <header>
-    <div class="logo-wrap"><img src="logo.png" alt="Foxint AI"></div>
-    <div class="brand"><b>Foxint AI</b><span>ассистент по расследованиям</span></div>
-    <div class="header-right">
-      <div class="status"><span class="dot" id="dot"></span><span id="statusText">готова</span></div>
-      <button class="settings-btn" id="chatsBtn" aria-label="Диалоги">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span class="badge" id="chatsBadge">1</span>
-      </button>
-      <button class="settings-btn" id="settingsBtn" aria-label="Настройки">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-    </div>
-  </header>
-  <div id="chat"></div>
-  <div id="attachPreview"></div>
-  <div class="mode-bar" id="modeBar">
-    <button class="mode-pill active" data-m="auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="4"/></svg>Авто</button>
-    <button class="mode-pill" data-m="osint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>OSINT</button>
-    <button class="mode-pill" data-m="code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Код</button>
-    <button class="mode-pill" data-m="text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg>Текст</button>
-  </div>
-  <div class="composer">
-    <div class="input-row">
-      <button class="icon-btn" id="attachBtn" aria-label="Прикрепить">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-      </button>
-      <input type="file" id="fileInput" style="display:none" multiple accept=".txt,.md,.json,.csv,.js,.ts,.jsx,.tsx,.py,.html,.htm,.css,.scss,.log,.xml,.yaml,.yml,.ini,.cfg,.conf,.sh,.bash,.sql,.rb,.go,.rs,.java,.c,.cpp,.h,.hpp,.php,.pl,.lua,.toml,.env">
-      <textarea id="input" rows="1" placeholder="Напишите сообщение..."></textarea>
-      <button class="send" id="send" disabled aria-label="Отправить">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-      </button>
-    </div>
-  </div>
-</div>
 
-<button class="scroll-down" id="scrollDown" aria-label="Вниз">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-</button>
-
-<div class="backdrop" id="backdrop"></div>
-<aside class="settings" id="settings">
-  <div class="settings-header">
-    <h2>Настройки</h2>
-    <button class="close-btn" id="closeSettings" aria-label="Закрыть">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-logo"><img src="logo.png" alt="Foxint AI"></div>
+      <div class="brand-name">Foxint AI</div>
+    </div>
+    <nav class="nav-links">
+      <a href="#features">Возможности</a>
+      <a href="#download">Скачать</a>
+      <a href="#faq">FAQ</a>
+      <a href="/app" class="nav-cta">Открыть</a>
+    </nav>
+    <button class="nav-burger" id="navBurger" aria-label="Меню">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
   </div>
-  <div class="settings-body">
-    <div class="section" id="profileSection" style="display:none">
-      <div class="section-title">Профиль</div>
-      <div class="profile-card" id="profileCard"></div>
-      <div class="tool-btn danger" id="logoutBtn">
-        <div class="setting-row-icon" style="background:rgba(239,68,68,.12); color:#ef4444">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-logo">
+        <img src="logo.png" alt="Foxint AI">
+      </div>
+      <h1 class="hero-title">
+        Foxint <em>AI</em>
+      </h1>
+      <p class="hero-sub">
+        OSINT-ассистент для разбора кейсов по открытым источникам.
+        Проверяй username, IP, email, домены и утечки — одной командой.
+      </p>
+      <div class="hero-buttons">
+        <a href="FoxintAI.apk" class="btn btn-primary" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Скачать APK</span>
+          <span class="btn-badge">Android</span>
+        </a>
+        <a href="/app" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg>
+          <span>Открыть в браузере</span>
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num">23</div>
+          <div class="stat-label">платформы</div>
         </div>
-        <div class="setting-row-info"><b>Выйти из аккаунта</b><span>Данные останутся в облаке</span></div>
-        <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-title">Внешний вид</div>
-      <div class="theme-grid" id="themeGrid"></div>
-    </div>
-    <div class="section">
-      <div class="section-title">Анимации</div>
-      <div class="setting-row">
-        <div class="setting-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></div>
-        <div class="setting-row-info"><b>Летающие частицы</b><span>Анимированный фон</span></div>
-        <button class="switch on" id="switchParticles"></button>
-      </div>
-      <div class="setting-row">
-        <div class="setting-row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
-        <div class="setting-row-info"><b>Плавные переходы</b><span>Уменьшить анимации</span></div>
-        <button class="switch" id="switchReduce"></button>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-title">Инструменты</div>
-      <div class="tool-btn" id="graphBtn">
-        <div class="setting-row-icon" style="background:var(--violet-soft); color:var(--violet)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg>
+        <div class="stat">
+          <div class="stat-num">5</div>
+          <div class="stat-label">OSINT-команд</div>
         </div>
-        <div class="setting-row-info"><b>Graph Analysis</b><span>Визуализация связей</span></div>
-        <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-      <div class="tool-btn" id="exportBtn">
-        <div class="setting-row-icon" style="background:var(--mint-soft); color:var(--mint)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <div class="stat">
+          <div class="stat-num">6</div>
+          <div class="stat-label">тем</div>
         </div>
-        <div class="setting-row-info"><b>Экспорт диалога</b><span>Сохранить чат в файл</span></div>
-        <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-      <div class="tool-btn danger" id="wipeBtn">
-        <div class="setting-row-icon" style="background:rgba(239,68,68,.12); color:#ef4444">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
-        </div>
-        <div class="setting-row-info"><b>Удалить всё</b><span>Стереть все данные</span></div>
-        <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>
-    <div class="section">
-      <div class="section-title">О приложении</div>
-      <div class="about">
-        <b>Foxint AI</b>
-        OSINT-ассистент для разбора кейсов.
-        <div class="version">● Версия 6.0</div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="section-inner">
+      <h2 class="section-title">Что умеет Foxint</h2>
+      <p class="section-sub">Специализированный ассистент для закрытия кейсов по открытым данным</p>
+
+      <div class="features-grid">
+        <div class="feature">
+          <div class="feature-icon" style="--c:#ff8b6a">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="feature-title">Username-скан</div>
+          <div class="feature-text">Проверка ника на 23 платформах: GitHub, Reddit, Telegram, VK, Habr, Steam и другие</div>
+          <code class="feature-code">.u ник</code>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon" style="--c:#60a5fa">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg>
+          </div>
+          <div class="feature-title">IP-геолокация</div>
+          <div class="feature-text">Страна, регион, город, ISP, AS, определение VPN и хостинга</div>
+          <code class="feature-code">.i 8.8.8.8</code>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon" style="--c:#34d399">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+          </div>
+          <div class="feature-title">Email-верификатор</div>
+          <div class="feature-text">Синтаксис, MX-записи, проверка одноразовых почт</div>
+          <code class="feature-code">.e email</code>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon" style="--c:#fbbf24">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+          </div>
+          <div class="feature-title">DNS-разбор</div>
+          <div class="feature-text">A, AAAA, MX, NS, TXT, CNAME записи любого домена</div>
+          <code class="feature-code">.d domain.com</code>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon" style="--c:#f472b6">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="feature-title">Проверка утечек</div>
+          <div class="feature-text">Поиск email в публичных базах утечек</div>
+          <code class="feature-code">.b email</code>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon" style="--c:#a78bfa">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6"/></svg>
+          </div>
+          <div class="feature-title">Graph Analysis</div>
+          <div class="feature-text">Визуализация связей — как в Obsidian. Ноды, рёбра, кастомные цвета</div>
+          <code class="feature-code">в настройках</code>
+        </div>
       </div>
     </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="section-inner">
+      <div class="download-card">
+        <div class="download-logo"><img src="logo.png" alt="Foxint AI"></div>
+        <h2>Скачай Foxint AI</h2>
+        <p>Бесплатно для Android. Установи за минуту.</p>
+
+        <a href="FoxintAI.apk" class="btn btn-primary btn-large" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Скачать FoxintAI.apk</span>
+        </a>
+
+        <div class="download-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          При установке Android попросит разрешить «Неизвестные источники» — это нормально
+        </div>
+
+        <div class="download-os">
+          <div class="os-item">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4483-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0989L4.841 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4396"/></svg>
+            <span>Android 5.0+</span>
+          </div>
+          <div class="os-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg>
+            <span>Или открой <a href="/app">в браузере</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq" id="faq">
+    <div class="section-inner">
+      <h2 class="section-title">Частые вопросы</h2>
+
+      <details class="faq-item">
+        <summary>Это безопасно?</summary>
+        <p>Да. Foxint не собирает личные данные и не передаёт их третьим лицам. Все чаты хранятся в Supabase (шифрование в покое). Email нужен только для входа и восстановления.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Сколько стоит?</summary>
+        <p>Foxint полностью бесплатный. Никаких подписок, платных функций и рекламы.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Как установить APK?</summary>
+        <p>1. Нажми «Скачать APK»<br>
+           2. Открой файл в уведомлениях или Загрузках<br>
+           3. Android спросит «Разрешить установку из неизвестных источников» — разреши<br>
+           4. Нажми «Установить»</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Работает ли на iPhone?</summary>
+        <p>Сейчас только Android. На iPhone можно открыть <a href="/app">в браузере</a> — работает так же, но без установки на рабочий стол.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Нужно ли что-то настраивать?</summary>
+        <p>Нет. Зарегистрируйся по email прямо в приложении и пользуйся. Все OSINT-команды и AI работают сразу.</p>
+      </details>
+
+      <details class="faq-item">
+        <summary>Откуда данные?</summary>
+        <p>Foxint использует только публичные открытые источники: DNS, публичные API геолокации, открытые базы утечек. Никаких взломов, никаких закрытых баз данных.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="section-inner">
+      <h2>Готов попробовать?</h2>
+      <p>Скачай APK или открой в браузере прямо сейчас</p>
+      <div class="cta-buttons">
+        <a href="FoxintAI.apk" class="btn btn-primary" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Скачать APK</span>
+        </a>
+        <a href="/app" class="btn btn-secondary">
+          <span>Открыть в браузере</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="logo.png" alt="Foxint">
+      <span>Foxint AI</span>
+    </div>
+    <div class="footer-links">
+      <a href="/app">Приложение</a>
+      <a href="privacy.html">Конфиденциальность</a>
+      <a href="https://t.me/foxintai" target="_blank" rel="noopener">Telegram</a>
+    </div>
+    <div class="footer-copy">© 2026 Foxint AI</div>
   </div>
-</aside>
+</footer>
 
-<div class="chats-modal" id="chatsModal">
-  <div class="chats-panel">
-    <div class="chats-header">
-      <h2>Диалоги</h2>
-      <button class="close-btn" id="closeChats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    </div>
-    <div class="chats-search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" id="chatsSearch" placeholder="Поиск по диалогам...">
-    </div>
-    <div class="chats-list" id="chatsList"></div>
-    <div class="chats-footer">
-      <button class="new-chat-btn" id="newChatBtn2">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Новый диалог
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="auth.js"></script>
-<script src="app.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
