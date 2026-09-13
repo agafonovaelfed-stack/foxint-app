@@ -1,234 +1,118 @@
+/* Foxint AI — Features v1 — часть 1 */
+window._fx = window._fx || {};
 
-/* ============ Foxint Features — часть 4 ============ */
 (function(){
 'use strict';
 
-const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const FEAT = window._fx.FEAT;
-const FONTS = window._fx.FONTS;
-const SOUNDS = window._fx.SOUNDS;
-const showMiniToast = window._fx.showMiniToast;
-const applyFont = window._fx.applyFont;
-const applyAccent = window._fx.applyAccent;
-
-/* PDF-парсер */
-async function loadPdfJs(){
-  if (window.pdfjsLib) return window.pdfjsLib;
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload = () => {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      resolve(window.pdfjsLib);
-    };
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-async function readPdf(file){
-  const pdfjs = await loadPdfJs();
-  const arrayBuf = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuf }).promise;
-  let text = '';
-  for (let i = 1; i <= Math.min(pdf.numPages, 20); i++){
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(it => it.str).join(' ') + '\n\n';
-  }
-  return text.trim();
-}
-window._fx.readPdf = readPdf;
-
-/* Реф-ссылки */
-function getRefLink(){
-  const user = window.FoxAuth?.getCurrentUser?.();
-  const id = user?.id ? user.id.slice(0, 8) : 'guest';
-  return `${location.origin}/app/?ref=${id}`;
-}
-function copyRefLink(){
-  navigator.clipboard.writeText(getRefLink()).then(() => showMiniToast('Ссылка скопирована'));
-}
-(function initRef(){
-  const params = new URLSearchParams(location.search);
-  const ref = params.get('ref');
-  if (ref && !FEAT.refId){
-    FEAT.refId = ref;
-    localStorage.setItem('foxint.refId', ref);
-  }
-})();
-
-/* Онбординг */
-function showOnboarding(){
-  if (localStorage.getItem('foxint.onboarded') === '1') return;
-  const slides = [
-    { title: 'Привет, я Foxint', text: 'OSINT-ассистент. Помогу разобрать кейс, найти людей и компании по открытым источникам, написать текст или код.',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
-    { title: 'Команды для OSINT', text: 'Пиши прямо в чат:\n• .u ник — поиск username\n• .i IP — геолокация\n• .e email — проверка email\n• .d домен — DNS\n• .b email — утечки',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>` },
-    { title: 'Всё готово', text: 'Прикрепи файлы, используй граф связей, выбирай тему и персону. Foxint подстроится под твой стиль.',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>` }
-  ];
-  let idx = 0;
-  const screen = document.createElement('div');
-  screen.className = 'onboard-screen';
-  document.body.appendChild(screen);
-  const render = () => {
-    const s = slides[idx];
-    screen.innerHTML = `<div class="onboard-card"><div class="onboard-icon">${s.icon}</div><div class="onboard-title">${esc(s.title)}</div><div class="onboard-text">${esc(s.text).replace(/\n/g, '<br>')}</div><div class="onboard-dots">${slides.map((_, i) => `<span class="${i === idx ? 'active' : ''}"></span>`).join('')}</div><div class="onboard-actions"><button class="onboard-skip" data-act="skip">Пропустить</button><button class="onboard-next" data-act="next">${idx === slides.length - 1 ? 'Начать' : 'Далее'}</button></div></div>`;
-    screen.querySelector('[data-act="skip"]').addEventListener('click', finish);
-    screen.querySelector('[data-act="next"]').addEventListener('click', () => {
-      if (idx < slides.length - 1){ idx++; render(); } else finish();
-    });
-  };
-  const finish = () => {
-    localStorage.setItem('foxint.onboarded', '1');
-    screen.classList.remove('show');
-    setTimeout(() => screen.remove(), 400);
-  };
-  render();
-  requestAnimationFrame(() => screen.classList.add('show'));
-}
-window._fx.showOnboarding = showOnboarding;
-
-/* Панель настроек Foxint Plus */
-function injectSettingsSection(){
-  const body = document.querySelector('.settings-body');
-  if (!body || body.querySelector('#fxNewSection')) return;
-  const section = document.createElement('div');
-  section.className = 'section';
-  section.id = 'fxNewSection';
-  section.innerHTML = `
-    <div class="section-title">Foxint Plus</div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg></div>
-      <div class="setting-row-info"><b>Персона</b><span id="fxPersonaLabel">${window._fx.PERSONAS[FEAT.persona].name}</span></div>
-      <select id="fxPersonaSel" class="fx-select">${Object.entries(window._fx.PERSONAS).map(([k,v]) => `<option value="${k}" ${k===FEAT.persona?'selected':''}>${v.name}</option>`).join('')}</select>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg></div>
-      <div class="setting-row-info"><b>Язык ответов AI</b><span id="fxLangLabel">${window._fx.LANGS[FEAT.lang].name}</span></div>
-      <select id="fxLangSel" class="fx-select">${Object.entries(window._fx.LANGS).map(([k,v]) => `<option value="${k}" ${k===FEAT.lang?'selected':''}>${v.name}</option>`).join('')}</select>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h14"/></svg></div>
-      <div class="setting-row-info"><b>Шрифт интерфейса</b><span id="fxFontLabel">${FONTS[FEAT.font].name}</span></div>
-      <select id="fxFontSel" class="fx-select">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}" ${k===FEAT.font?'selected':''}>${v.name}</option>`).join('')}</select>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v6M12 17v6"/></svg></div>
-      <div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div>
-      <input type="color" id="fxAccentColor" value="${FEAT.accent || '#5b8dff'}" class="fx-color">
-      <button class="fx-mini-btn" id="fxAccentReset">Сброс</button>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
-      <div class="setting-row-info"><b>Звуки</b><span>Клик при отправке/ответе</span></div>
-      <button class="switch ${FEAT.sound ? 'on' : ''}" id="fxSoundSw"></button>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-      <div class="setting-row-info"><b>Анимация «печатается»</b><span>Ответ по буквам</span></div>
-      <button class="switch ${FEAT.typing ? 'on' : ''}" id="fxTypingSw"></button>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-      <div class="setting-row-info"><b>Chain-of-thought</b><span>Показывать рассуждения</span></div>
-      <button class="switch ${FEAT.cot ? 'on' : ''}" id="fxCotSw"></button>
-    </div>
-
-    <div class="tool-btn" id="fxSummarizeBtn">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h14"/></svg></div>
-      <div class="setting-row-info"><b>Сводка диалога</b><span>Сжать в 5 пунктов</span></div>
-      <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-
-    <div class="tool-btn" id="fxRefBtn">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
-      <div class="setting-row-info"><b>Пригласить друга</b><span>Скопировать реф-ссылку</span></div>
-      <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
-  body.insertBefore(section, body.firstChild);
-
-  section.querySelector('#fxPersonaSel').addEventListener('change', e => {
-    FEAT.persona = e.target.value;
-    localStorage.setItem('foxint.persona', FEAT.persona);
-    section.querySelector('#fxPersonaLabel').textContent = window._fx.PERSONAS[FEAT.persona].name;
-  });
-  section.querySelector('#fxLangSel').addEventListener('change', e => {
-    FEAT.lang = e.target.value;
-    localStorage.setItem('foxint.lang', FEAT.lang);
-    section.querySelector('#fxLangLabel').textContent = window._fx.LANGS[FEAT.lang].name;
-  });
-  section.querySelector('#fxFontSel').addEventListener('change', e => {
-    applyFont(e.target.value);
-    section.querySelector('#fxFontLabel').textContent = FONTS[FEAT.font].name;
-  });
-  section.querySelector('#fxAccentColor').addEventListener('input', e => applyAccent(e.target.value));
-  section.querySelector('#fxAccentReset').addEventListener('click', () => {
-    applyAccent('');
-    section.querySelector('#fxAccentColor').value = '#5b8dff';
-  });
-  section.querySelector('#fxSoundSw').addEventListener('click', e => {
-    FEAT.sound = !FEAT.sound;
-    e.target.classList.toggle('on', FEAT.sound);
-    localStorage.setItem('foxint.sound', FEAT.sound ? '1' : '0');
-    if (FEAT.sound) SOUNDS.click();
-  });
-  section.querySelector('#fxTypingSw').addEventListener('click', e => {
-    FEAT.typing = !FEAT.typing;
-    e.target.classList.toggle('on', FEAT.typing);
-    localStorage.setItem('foxint.typing', FEAT.typing ? '1' : '0');
-  });
-  section.querySelector('#fxCotSw').addEventListener('click', e => {
-    FEAT.cot = !FEAT.cot;
-    e.target.classList.toggle('on', FEAT.cot);
-    localStorage.setItem('foxint.cot', FEAT.cot ? '1' : '0');
-  });
-  section.querySelector('#fxSummarizeBtn').addEventListener('click', () => window._fx.summarizeChat());
-  section.querySelector('#fxRefBtn').addEventListener('click', copyRefLink);
-}
-
-/* Публичный API */
-window.FoxFeatures = {
-  FEAT,
-  getPersonaPrompt: () => window._fx.PERSONAS[FEAT.persona]?.prompt || '',
-  getLangPrompt: () => window._fx.LANGS[FEAT.lang]?.prompt || '',
-  isCoTEnabled: () => FEAT.cot,
-  isTypingEnabled: () => FEAT.typing,
-  typeIn: window._fx.typeIn,
-  renderColorPalette: window._fx.renderColorPalette,
-  addMessageActions: window._fx.addMessageActions,
-  addEditToUserMessage: window._fx.addEditToUserMessage,
-  readPdf: window._fx.readPdf,
-  showOnboarding: window._fx.showOnboarding,
-  injectSettingsSection,
-  showMiniToast,
-  SOUNDS
+const FEAT = {
+  font: localStorage.getItem('foxint.font') || 'inter',
+  accent: localStorage.getItem('foxint.accent') || '',
+  sound: localStorage.getItem('foxint.sound') !== '0',
+  persona: localStorage.getItem('foxint.persona') || 'default',
+  lang: localStorage.getItem('foxint.lang') || 'ru',
+  cot: localStorage.getItem('foxint.cot') === '1',
+  typing: localStorage.getItem('foxint.typing') !== '0',
+  refId: localStorage.getItem('foxint.refId') || ''
 };
 
-/* Применяем шрифт и акцент */
-applyFont(FEAT.font);
-if (FEAT.accent) applyAccent(FEAT.accent);
+const FONTS = {
+  inter:   { name: 'Inter',     stack: "'Inter', -apple-system, sans-serif" },
+  manrope: { name: 'Manrope',   stack: "'Manrope', -apple-system, sans-serif", url: 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap' },
+  georgia: { name: 'Серифный',  stack: "Georgia, 'Times New Roman', serif" },
+  mono:    { name: 'Моно',      stack: "ui-monospace, 'SF Mono', Menlo, monospace" },
+  system:  { name: 'Системный', stack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }
+};
 
-/* Запуск UI */
-setTimeout(showOnboarding, 1500);
-setTimeout(injectSettingsSection, 800);
+if (FEAT.font === 'manrope' && FONTS.manrope.url){
+  const l = document.createElement('link');
+  l.rel = 'stylesheet'; l.href = FONTS.manrope.url;
+  document.head.appendChild(l);
+}
+
+function applyFont(id){
+  const f = FONTS[id] || FONTS.inter;
+  document.body.style.fontFamily = f.stack;
+  FEAT.font = id;
+  localStorage.setItem('foxint.font', id);
+}
+
+function hexToRgb(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return { r: 91, g: 141, b: 255 };
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function applyAccent(hex){
+  if (!hex){
+    document.documentElement.style.removeProperty('--accent');
+    document.documentElement.style.removeProperty('--accent-soft');
+    document.documentElement.style.removeProperty('--accent-glow');
+  } else {
+    const rgb = hexToRgb(hex);
+    document.documentElement.style.setProperty('--accent', hex);
+    document.documentElement.style.setProperty('--accent-soft', `rgba(${rgb.r},${rgb.g},${rgb.b},0.15)`);
+    document.documentElement.style.setProperty('--accent-glow', `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`);
+  }
+  FEAT.accent = hex;
+  localStorage.setItem('foxint.accent', hex);
+}
+
+let audioCtx = null;
+function ensureAudio(){
+  if (!audioCtx){ try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, duration, type){
+  if (!FEAT.sound) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  gain.gain.value = 0.08;
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration/1000);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + duration/1000);
+}
+const SOUNDS = {
+  send:    () => { playTone(880, 60); setTimeout(() => playTone(1100, 60), 50); },
+  receive: () => { playTone(660, 80); setTimeout(() => playTone(880, 100), 80); },
+  error:   () => { playTone(300, 200, 'square'); },
+  click:   () => { playTone(1200, 30); }
+};
+
+function showMiniToast(msg){
+  let t = document.getElementById('fxToast');
+  if (!t){
+    t = document.createElement('div');
+    t.id = 'fxToast'; t.className = 'fx-toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+window._fx.FEAT = FEAT;
+window._fx.FONTS = FONTS;
+window._fx.SOUNDS = SOUNDS;
+window._fx.showMiniToast = showMiniToast;
+window._fx.applyFont = applyFont;
+window._fx.applyAccent = applyAccent;
+window._fx.hexToRgb = hexToRgb;
+console.log('[Foxint] Часть 1 загружена');
 })();
 
-/* ============ Часть 2 ============ */
+/* Foxint AI — Features — часть 2 */
 (function(){
 'use strict';
 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const FEAT = window._fx.FEAT;
-const SOUNDS = window._fx.SOUNDS;
 const showMiniToast = window._fx.showMiniToast;
 
 function extractColorsFromText(text){
@@ -247,7 +131,7 @@ function renderColorPalette(bubbleEl){
     const sw = document.createElement('button');
     sw.className = 'color-swatch';
     sw.style.background = hex;
-    sw.title = hex + ' (клик — скопировать)';
+    sw.title = hex;
     sw.addEventListener('click', () => {
       navigator.clipboard.writeText(hex).then(() => {
         sw.classList.add('copied');
@@ -324,14 +208,14 @@ function addMessageActions(msgEl, role){
 window._fx.renderColorPalette = renderColorPalette;
 window._fx.typeIn = typeIn;
 window._fx.addMessageActions = addMessageActions;
+console.log('[Foxint] Часть 2 загружена');
 })();
 
-/* ============ Часть 3 ============ */
+/* Foxint AI — Features — часть 3 */
 (function(){
 'use strict';
 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const FEAT = window._fx.FEAT;
 const showMiniToast = window._fx.showMiniToast;
 
 function addEditToUserMessage(msgEl){
@@ -403,9 +287,10 @@ window._fx.addEditToUserMessage = addEditToUserMessage;
 window._fx.PERSONAS = PERSONAS;
 window._fx.LANGS = LANGS;
 window._fx.summarizeChat = summarizeChat;
+console.log('[Foxint] Часть 3 загружена');
 })();
 
-/* ============ Часть 4 ============ */
+/* Foxint AI — Features — часть 4 */
 (function(){
 'use strict';
 
@@ -417,7 +302,6 @@ const showMiniToast = window._fx.showMiniToast;
 const applyFont = window._fx.applyFont;
 const applyAccent = window._fx.applyAccent;
 
-/* PDF */
 async function loadPdfJs(){
   if (window.pdfjsLib) return window.pdfjsLib;
   return new Promise((resolve, reject) => {
@@ -445,14 +329,11 @@ async function readPdf(file){
 }
 window._fx.readPdf = readPdf;
 
-/* Реф-ссылка */
-function getRefLink(){
+function copyRefLink(){
   const user = window.FoxAuth?.getCurrentUser?.();
   const id = user?.id ? user.id.slice(0, 8) : 'guest';
-  return `${location.origin}/app/?ref=${id}`;
-}
-function copyRefLink(){
-  navigator.clipboard.writeText(getRefLink()).then(() => showMiniToast('Ссылка скопирована'));
+  const link = `${location.origin}/app/?ref=${id}`;
+  navigator.clipboard.writeText(link).then(() => showMiniToast('Ссылка скопирована'));
 }
 (function initRef(){
   const params = new URLSearchParams(location.search);
@@ -463,16 +344,12 @@ function copyRefLink(){
   }
 })();
 
-/* Онбординг */
 function showOnboarding(){
   if (localStorage.getItem('foxint.onboarded') === '1') return;
   const slides = [
-    { title: 'Привет, я Foxint', text: 'OSINT-ассистент. Помогу разобрать кейс, найти людей и компании по открытым источникам, написать текст или код.',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
-    { title: 'Команды для OSINT', text: 'Пиши прямо в чат:\n• .u ник — поиск username\n• .i IP — геолокация\n• .e email — проверка email\n• .d домен — DNS\n• .b email — утечки',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>` },
-    { title: 'Всё готово', text: 'Прикрепи файлы, используй граф связей, выбирай тему и персону. Foxint подстроится под твой стиль.',
-      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>` }
+    { title: 'Привет, я Foxint', text: 'OSINT-ассистент. Помогу разобрать кейс, найти людей и компании по открытым источникам, написать текст или код.', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>' },
+    { title: 'Команды для OSINT', text: 'Пиши прямо в чат:\n• .u ник — поиск username\n• .i IP — геолокация\n• .e email — проверка email\n• .d домен — DNS\n• .b email — утечки', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' },
+    { title: 'Всё готово', text: 'Прикрепи файлы, используй граф связей, выбирай тему и персону. Foxint подстроится под твой стиль.', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><polyline points="20 6 9 17 4 12"/></svg>' }
   ];
   let idx = 0;
   const screen = document.createElement('div');
@@ -480,7 +357,7 @@ function showOnboarding(){
   document.body.appendChild(screen);
   const render = () => {
     const s = slides[idx];
-    screen.innerHTML = `<div class="onboard-card"><div class="onboard-icon">${s.icon}</div><div class="onboard-title">${esc(s.title)}</div><div class="onboard-text">${esc(s.text).replace(/\n/g, '<br>')}</div><div class="onboard-dots">${slides.map((_, i) => `<span class="${i === idx ? 'active' : ''}"></span>`).join('')}</div><div class="onboard-actions"><button class="onboard-skip" data-act="skip">Пропустить</button><button class="onboard-next" data-act="next">${idx === slides.length - 1 ? 'Начать' : 'Далее'}</button></div></div>`;
+    screen.innerHTML = '<div class="onboard-card"><div class="onboard-icon">' + s.icon + '</div><div class="onboard-title">' + esc(s.title) + '</div><div class="onboard-text">' + esc(s.text).replace(/\n/g, '<br>') + '</div><div class="onboard-dots">' + slides.map((_, i) => '<span class="' + (i === idx ? 'active' : '') + '"></span>').join('') + '</div><div class="onboard-actions"><button class="onboard-skip" data-act="skip">Пропустить</button><button class="onboard-next" data-act="next">' + (idx === slides.length - 1 ? 'Начать' : 'Далее') + '</button></div></div>';
     screen.querySelector('[data-act="skip"]').addEventListener('click', finish);
     screen.querySelector('[data-act="next"]').addEventListener('click', () => {
       if (idx < slides.length - 1){ idx++; render(); } else finish();
@@ -496,61 +373,22 @@ function showOnboarding(){
 }
 window._fx.showOnboarding = showOnboarding;
 
-/* Панель настроек */
 function injectSettingsSection(){
   const body = document.querySelector('.settings-body');
   if (!body || body.querySelector('#fxNewSection')) return;
   const section = document.createElement('div');
   section.className = 'section';
   section.id = 'fxNewSection';
-  section.innerHTML = `
-    <div class="section-title">Foxint Plus</div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg></div>
-      <div class="setting-row-info"><b>Персона</b><span id="fxPersonaLabel">${window._fx.PERSONAS[FEAT.persona].name}</span></div>
-      <select id="fxPersonaSel" class="fx-select">${Object.entries(window._fx.PERSONAS).map(([k,v]) => `<option value="${k}" ${k===FEAT.persona?'selected':''}>${v.name}</option>`).join('')}</select>
-    </div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg></div>
-      <div class="setting-row-info"><b>Язык ответов AI</b><span id="fxLangLabel">${window._fx.LANGS[FEAT.lang].name}</span></div>
-      <select id="fxLangSel" class="fx-select">${Object.entries(window._fx.LANGS).map(([k,v]) => `<option value="${k}" ${k===FEAT.lang?'selected':''}>${v.name}</option>`).join('')}</select>
-    </div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h14"/></svg></div>
-      <div class="setting-row-info"><b>Шрифт интерфейса</b><span id="fxFontLabel">${FONTS[FEAT.font].name}</span></div>
-      <select id="fxFontSel" class="fx-select">${Object.entries(FONTS).map(([k,v]) => `<option value="${k}" ${k===FEAT.font?'selected':''}>${v.name}</option>`).join('')}</select>
-    </div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/></svg></div>
-      <div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div>
-      <input type="color" id="fxAccentColor" value="${FEAT.accent || '#5b8dff'}" class="fx-color">
-      <button class="fx-mini-btn" id="fxAccentReset">Сброс</button>
-    </div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
-      <div class="setting-row-info"><b>Звуки</b><span>Клик при отправке/ответе</span></div>
-      <button class="switch ${FEAT.sound ? 'on' : ''}" id="fxSoundSw"></button>
-    </div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-      <div class="setting-row-info"><b>Анимация «печатается»</b><span>Ответ по буквам</span></div>
-      <button class="switch ${FEAT.typing ? 'on' : ''}" id="fxTypingSw"></button>
-    </div>
-    <div class="setting-row">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-      <div class="setting-row-info"><b>Chain-of-thought</b><span>Показывать рассуждения</span></div>
-      <button class="switch ${FEAT.cot ? 'on' : ''}" id="fxCotSw"></button>
-    </div>
-    <div class="tool-btn" id="fxSummarizeBtn">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h14"/></svg></div>
-      <div class="setting-row-info"><b>Сводка диалога</b><span>Сжать в 5 пунктов</span></div>
-      <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-    <div class="tool-btn" id="fxRefBtn">
-      <div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
-      <div class="setting-row-info"><b>Пригласить друга</b><span>Скопировать реф-ссылку</span></div>
-      <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
+  section.innerHTML = '<div class="section-title">Foxint Plus</div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">⚙</div><div class="setting-row-info"><b>Персона</b><span id="fxPersonaLabel">' + window._fx.PERSONAS[FEAT.persona].name + '</span></div><select id="fxPersonaSel" class="fx-select">' + Object.entries(window._fx.PERSONAS).map(([k,v]) => '<option value="' + k + '"' + (k === FEAT.persona ? ' selected' : '') + '>' + v.name + '</option>').join('') + '</select></div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🌐</div><div class="setting-row-info"><b>Язык ответов AI</b><span id="fxLangLabel">' + window._fx.LANGS[FEAT.lang].name + '</span></div><select id="fxLangSel" class="fx-select">' + Object.entries(window._fx.LANGS).map(([k,v]) => '<option value="' + k + '"' + (k === FEAT.lang ? ' selected' : '') + '>' + v.name + '</option>').join('') + '</select></div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">📝</div><div class="setting-row-info"><b>Шрифт интерфейса</b><span id="fxFontLabel">' + FONTS[FEAT.font].name + '</span></div><select id="fxFontSel" class="fx-select">' + Object.entries(FONTS).map(([k,v]) => '<option value="' + k + '"' + (k === FEAT.font ? ' selected' : '') + '>' + v.name + '</option>').join('') + '</select></div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🎨</div><div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div><input type="color" id="fxAccentColor" value="' + (FEAT.accent || '#5b8dff') + '" class="fx-color"><button class="fx-mini-btn" id="fxAccentReset">Сброс</button></div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🔊</div><div class="setting-row-info"><b>Звуки</b><span>Клик при отправке/ответе</span></div><button class="switch' + (FEAT.sound ? ' on' : '') + '" id="fxSoundSw"></button></div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">✏️</div><div class="setting-row-info"><b>Анимация печатается</b><span>Ответ по буквам</span></div><button class="switch' + (FEAT.typing ? ' on' : '') + '" id="fxTypingSw"></button></div>' +
+    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">✅</div><div class="setting-row-info"><b>Chain-of-thought</b><span>Показывать рассуждения</span></div><button class="switch' + (FEAT.cot ? ' on' : '') + '" id="fxCotSw"></button></div>' +
+    '<div class="tool-btn" id="fxSummarizeBtn"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">📋</div><div class="setting-row-info"><b>Сводка диалога</b><span>Сжать в 5 пунктов</span></div><svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>' +
+    '<div class="tool-btn" id="fxRefBtn"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🔗</div><div class="setting-row-info"><b>Пригласить друга</b><span>Скопировать реф-ссылку</span></div><svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>';
   body.insertBefore(section, body.firstChild);
 
   section.querySelector('#fxPersonaSel').addEventListener('change', e => {
@@ -592,9 +430,8 @@ function injectSettingsSection(){
   section.querySelector('#fxRefBtn').addEventListener('click', copyRefLink);
 }
 
-/* Публичный API */
 window.FoxFeatures = {
-  FEAT,
+  FEAT: FEAT,
   getPersonaPrompt: () => window._fx.PERSONAS[FEAT.persona]?.prompt || '',
   getLangPrompt: () => window._fx.LANGS[FEAT.lang]?.prompt || '',
   isCoTEnabled: () => FEAT.cot,
@@ -605,9 +442,9 @@ window.FoxFeatures = {
   addEditToUserMessage: window._fx.addEditToUserMessage,
   readPdf: window._fx.readPdf,
   showOnboarding: window._fx.showOnboarding,
-  injectSettingsSection,
-  showMiniToast,
-  SOUNDS
+  injectSettingsSection: injectSettingsSection,
+  showMiniToast: showMiniToast,
+  SOUNDS: SOUNDS
 };
 
 applyFont(FEAT.font);
@@ -615,4 +452,5 @@ if (FEAT.accent) applyAccent(FEAT.accent);
 
 setTimeout(showOnboarding, 1500);
 setTimeout(injectSettingsSection, 800);
+console.log('[Foxint] Часть 4 загружена');
 })();
