@@ -964,7 +964,7 @@ async function sendMsg(){
     const reply = await askGigaChat(text);
     hideTyping();
     if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
-    // Если модель отдала только     const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
+    const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
     if (cleanReply){
       appendMsg('ai', reply);
     }
@@ -1048,7 +1048,7 @@ window.__foxint_regenerate = async () => {
     const reply = await askGigaChat(prevUser.content);
     hideTyping();
     if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
-    // Если модель отдала только     const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
+    const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
     if (cleanReply){
       appendMsg('ai', reply);
     }
