@@ -488,20 +488,60 @@ function injectSettingsSection(){
     FONTS, FEAT.font, (v) => { applyFont(v); }
   )));
 
+  const PRESETS = ['#5b8dff','#a78bfa','#f472b6','#ff6b1a','#22ffb0','#34d399','#fbbf24','#ef4444','#06b6d4','#ec4899','#10b981','#f0c674'];
   const colorRow = document.createElement('div');
   colorRow.className = 'setting-row';
-  colorRow.innerHTML = '<div class="setting-row-icon">' + ICONS.color + '</div><div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div>';
-  const colorInput = document.createElement('input');
-  colorInput.type = 'color';
-  colorInput.value = FEAT.accent || '#5b8dff';
-  colorInput.className = 'fx-color';
-  colorInput.addEventListener('input', e => applyAccent(e.target.value));
+  colorRow.style.flexDirection = 'column';
+  colorRow.style.alignItems = 'flex-start';
+  colorRow.style.gap = '12px';
+  colorRow.innerHTML = '<div style="display:flex;align-items:center;gap:12px;width:100%"><div class="setting-row-icon">' + ICONS.color + '</div><div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div></div>';
+
+  const palette = document.createElement('div');
+  palette.className = 'accent-palette';
+  PRESETS.forEach(hex => {
+    const dot = document.createElement('button');
+    dot.className = 'accent-dot' + (FEAT.accent === hex ? ' active' : '');
+    dot.style.background = hex;
+    dot.dataset.color = hex;
+    dot.title = hex;
+    dot.addEventListener('click', () => {
+      applyAccent(hex);
+      palette.querySelectorAll('.accent-dot').forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+    });
+    palette.appendChild(dot);
+  });
+
+  const customBtn = document.createElement('label');
+  customBtn.className = 'accent-dot accent-dot-custom' + (FEAT.accent && !PRESETS.includes(FEAT.accent) ? ' active' : '');
+  customBtn.title = 'Свой цвет';
+  customBtn.style.background = FEAT.accent && !PRESETS.includes(FEAT.accent) ? FEAT.accent : 'conic-gradient(from 0deg, #ff6b6b, #fbbf24, #34d399, #22d3ee, #a78bfa, #f472b6, #ff6b6b)';
+  const customInput = document.createElement('input');
+  customInput.type = 'color';
+  customInput.value = FEAT.accent || '#5b8dff';
+  customInput.style.opacity = '0';
+  customInput.style.width = '0';
+  customInput.style.height = '0';
+  customInput.style.position = 'absolute';
+  customInput.addEventListener('input', e => {
+    applyAccent(e.target.value);
+    customBtn.style.background = e.target.value;
+    palette.querySelectorAll('.accent-dot').forEach(d => d.classList.remove('active'));
+    customBtn.classList.add('active');
+  });
+  customBtn.appendChild(customInput);
+  palette.appendChild(customBtn);
+
   const resetBtn = document.createElement('button');
   resetBtn.className = 'fx-mini-btn';
   resetBtn.textContent = 'Сброс';
-  resetBtn.addEventListener('click', () => { applyAccent(''); colorInput.value = '#5b8dff'; });
-  colorRow.appendChild(colorInput);
-  colorRow.appendChild(resetBtn);
+  resetBtn.addEventListener('click', () => {
+    applyAccent('');
+    palette.querySelectorAll('.accent-dot').forEach(d => d.classList.remove('active'));
+  });
+  palette.appendChild(resetBtn);
+
+  colorRow.appendChild(palette);
   section.appendChild(colorRow);
 
   const soundRow = makeRow(ICONS.sound, 'Звуки', 'Клик при отправке/ответе');

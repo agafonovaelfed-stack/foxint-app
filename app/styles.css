@@ -1787,3 +1787,166 @@ body::before{
   margin-top:6px;
   color:var(--ink);
 }
+
+/* ============ ЖИРНЫЕ ШРИФТЫ ============ */
+.welcome h1{
+  font-weight: 700 !important;
+  letter-spacing: -.8px !important;
+}
+.welcome h1 em{
+  font-weight: 700 !important;
+}
+.welcome p{
+  font-weight: 500 !important;
+  color: var(--ink-soft) !important;
+}
+.chip{
+  font-weight: 600 !important;
+}
+.chip-text b{
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+}
+.chip-text span{
+  font-weight: 500 !important;
+  color: var(--ink-soft) !important;
+}
+.sidebar-brand-text b,
+.chat-item-title,
+.setting-row-info b,
+.section-title,
+.brand b{
+  font-weight: 700 !important;
+}
+.bubble{
+  font-weight: 450 !important;
+}
+.msg-bubble strong{
+  font-weight: 700 !important;
+}
+
+/* ============ ПАЛИТРА ЦВЕТОВ (кружки) ============ */
+.accent-palette{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+.accent-dot{
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: all .25s cubic-bezier(.34,1.56,.64,1);
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.accent-dot:hover{
+  transform: scale(1.15);
+}
+.accent-dot.active{
+  border-color: #fff;
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 2px 8px rgba(0,0,0,.3);
+  transform: scale(1.08);
+}
+.accent-dot-custom{
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.accent-dot-custom::after{
+  content: '+';
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+/* ============ THOUGHT-BODY (этапы + рассуждения) ============ */
+.thought-body{
+  display: none;
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 14px;
+  animation: fadeIn .3s ease;
+}
+.thought-block.open .thought-body{
+  display: block;
+}
+.thought-body .foxthink-stages{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin-bottom: 12px;
+}
+.thought-body .foxthink-stage{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  opacity: .9;
+}
+.thought-body .foxthink-stage.done{
+  color: var(--ink-soft);
+  opacity: .85;
+}
+.thought-body .foxthink-stage.done .foxthink-marker{
+  border-color: var(--mint);
+  background: var(--mint);
+}
+.thought-body .foxthink-marker{
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.thought-body .foxthink-stage.done .foxthink-marker::after{
+  content: '';
+  width: 6px;
+  height: 3px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+  position: absolute;
+}
+.thought-body .foxthink-text{
+  line-height: 1.4;
+}
+.thought-reasoning{
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  font-style: italic;
+  margin-top: 4px;
+}
+.thought-reasoning::before{
+  content: 'Рассуждения модели:';
+  display: block;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}

@@ -485,7 +485,9 @@ function appendMsg(role, text, opts = {}){
       const thinkContent = m[1].trim();
       const answerContent = html.replace(thinkRegex, '').trim();
       const elapsed = (window.__foxintLastThinkTime || 0).toFixed(1);
-      html = '<div class="thought-block"><div class="thought-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg><span>Размышления</span><span class="thought-time">· ' + elapsed + 'с</span></div><div class="thought-body">' + thinkContent + '</div></div><div class="answer-block">' + (answerContent || thinkContent) + '</div>';
+      const stagesHtml = window.__foxintLastStages || '';
+      html = '<div class="thought-block"><div class="thought-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg><span>FoxThink</span><span class="thought-time">· ' + elapsed + 'с</span></div><div class="thought-body">' + stagesHtml + '<div class="thought-reasoning">' + thinkContent + '</div></div></div><div class="answer-block">' + (answerContent || thinkContent) + '</div>';
+      window.__foxintLastStages = '';
     }
   }
 
@@ -502,15 +504,6 @@ function appendMsg(role, text, opts = {}){
   chatEl.appendChild(d);
 
   // Доп. обработка
-  // Клик на think-toggle сворачивает/разворачивает блок
-  b.querySelectorAll('.think-toggle').forEach(t => {
-    t.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const block = t.closest('.think-block');
-      if (block) block.classList.toggle('open');
-    });
-  });
-
   // Клик на thought-head раскрывает рассуждения
   b.querySelectorAll('.thought-head').forEach(h => {
     h.addEventListener('click', (e) => {
@@ -600,7 +593,20 @@ function hideTyping(){
     window.__foxintLastThinkTime = (Date.now() - window.__foxthinkStartTime) / 1000;
   }
   const t = document.getElementById('typing');
-  if (t){ t.classList.add('foxthink-done'); setTimeout(() => t.remove(), 200); }
+  if (t){
+    const stagesEl = t.querySelector('#foxthinkStages');
+    if (stagesEl){
+      stagesEl.querySelectorAll('.foxthink-stage').forEach(r => {
+        r.classList.add('done');
+        r.classList.remove('active');
+      });
+      window.__foxintLastStages = stagesEl.outerHTML;
+    } else {
+      window.__foxintLastStages = '';
+    }
+    t.classList.add('foxthink-done');
+    setTimeout(() => t.remove(), 200);
+  }
   foxthinkState = null;
 }
 
