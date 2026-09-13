@@ -477,37 +477,44 @@ function appendMsg(role, text, opts = {}){
   b.className = 'msg-bubble';
   let html = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
 
-  // Рассуждения [think]...[/think] → в FoxThink-панель, а НЕ в bubble
+  // ============ РАЗБОР РАССУЖДЕНИЙ ============
+  // [think]...[/think] → в FoxThink-панель выше, из bubble убираем
   if (role === 'ai' && !opts.raw){
     const thinkRegex = /\[think\]([\s\S]*?)\[\/think\]/i;
     const m = html.match(thinkRegex);
     if (m){
       const thinkContent = m[1].trim();
-      // Убираем рассуждения из bubble — остаётся только финальный ответ
       html = html.replace(thinkRegex, '').trim();
-      // Вставляем рассуждения в FoxThink-панель
-      const panel = document.getElementById('foxthinkPanel');
+
+      const panels = document.querySelectorAll('#foxthinkPanel');
+      const panel = panels[panels.length - 1];
+
       if (panel){
-        const body = panel.querySelector('.foxthink-bubble') || panel.querySelector('.msg-bubble');
-        if (body && !body.querySelector('.foxthink-reasoning')){
-          const reasoning = document.createElement('div');
-          reasoning.className = 'foxthink-reasoning';
-          reasoning.innerHTML = '<div class="foxthink-reasoning-title">Рассуждения</div>' + thinkContent;
-          body.appendChild(reasoning);
+        const bubble = panel.querySelector('.foxthink-bubble');
+        if (bubble){
+          const loading = bubble.querySelector('#foxthinkLoading');
+          if (loading) loading.remove();
+
+          if (!bubble.querySelector('.foxthink-reasoning')){
+            const reasoning = document.createElement('div');
+            reasoning.className = 'foxthink-reasoning';
+            reasoning.innerHTML =
+              '<div class="foxthink-reasoning-title">Рассуждения</div>' +
+              esc(thinkContent);
+            bubble.appendChild(reasoning);
+          }
+        }
+
+        panel.classList.add('expanded');
+        setTimeout(() => panel.classList.remove('expanded'), 1500);
+
+        const head = panel.querySelector('.foxthink-header');
+        if (head && !head.dataset.wired){
+          head.dataset.wired = '1';
+          head.style.cursor = 'pointer';
+          head.addEventListener('click', () => panel.classList.toggle('expanded'));
         }
       }
-      // Если ответа после think не осталось — не показываем пустой bubble
-      if (!html){
-        // оставляем только панель
-        if (window.__foxintSkipNextMsg) window.__foxintSkipNextMsg = true;
-      }
-    }
-    // Если в ответе нет финального текста — этот bubble не нужен
-    if (window.__foxintSkipNextMsg && !html){
-      d.remove?.();
-      // Пропускаем рендер
-      b.innerHTML = '';
-      return;
     }
   }
 
@@ -566,66 +573,44 @@ function buildStages(scenario, text){
   return ['Разбираю вопрос','Собираю факты','Формулирую ответ'];
 }
 function showTyping(userText){
-  const stages = buildStages(detectScenario(userText||'', currentMode), userText||'');
   const d = document.createElement('div');
-  d.className = 'msg ai foxthink-msg'; d.id = 'typing';
-  d.innerHTML = `<div class="msg-avatar"><img src="/app/logo.png" alt=""></div><div class="msg-bubble foxthink-bubble"><div class="foxthink-header"><div class="foxthink-title"><span class="foxthink-dot"></span>FoxThink</div><div class="foxthink-timer" id="foxthinkTimer">0.0s</div></div><div class="foxthink-stages" id="foxthinkStages"></div></div>`;
-  chatEl.appendChild(d); scrollBottom();
-  const stagesEl = document.getElementById('foxthinkStages');
-  const timerEl = document.getElementById('foxthinkTimer');
-  let currentStage = 0, finished = false, stageTick = null;
-  function renderStages(){
-    stagesEl.innerHTML = '';
-    stages.forEach((txt, i) => {
-      const row = document.createElement('div');
-      row.className = 'foxthink-stage';
-      if (i < currentStage) row.classList.add('done');
-      if (i === currentStage && !finished) row.classList.add('active');
-      row.innerHTML = `<span class="foxthink-marker"></span><span class="foxthink-text">${esc(txt)}</span>`;
-      stagesEl.appendChild(row);
-    });
-  }
-  renderStages();
-  function next(){
-    if (finished || currentStage >= stages.length - 1) return;
-    currentStage++; renderStages();
-    if (currentStage < stages.length - 1) stageTick = setTimeout(next, 400 + Math.random()*500);
-  }
-  stageTick = setTimeout(next, 500);
-  const start = Date.now();
-  window.__foxthinkStartTime = start;
-  const timer = setInterval(() => {
-    if (finished){ clearInterval(timer); return; }
-    if (timerEl) timerEl.textContent = ((Date.now()-start)/1000).toFixed(1) + 's';
+  d.className = 'msg ai foxthink-msg';
+  d.id = 'typing';
+  d.innerHTML =
+    '<div class="msg-avatar"><img src="/app/logo.png" alt=""></div>' +
+    '<div class="msg-bubble foxthink-bubble">' +
+      '<div class="foxthink-header">' +
+        '<div class="foxthink-title"><span class="foxthink-dot"></span>FoxThink</div>' +
+        '<div class="foxthink-timer" id="foxthinkTimer">0.0s</div>' +
+      '</div>' +
+      '<div class="foxthink-loading" id="foxthinkLoading">' +
+        '<span class="foxthink-loading-dot"></span>' +
+        '<span class="foxthink-loading-dot"></span>' +
+        '<span class="foxthink-loading-dot"></span>' +
+      '</div>' +
+    '</div>';
+  chatEl.appendChild(d);
+  scrollBottom();
+
+  window.__foxthinkStartTime = Date.now();
+  const timerEl = d.querySelector('#foxthinkTimer');
+  window.__foxthinkTimer = setInterval(() => {
+    if (timerEl) timerEl.textContent = ((Date.now() - window.__foxthinkStartTime) / 1000).toFixed(1) + 's';
   }, 100);
-  foxthinkState = {
-    finish: () => {
-      finished = true;
-      clearTimeout(stageTick); clearInterval(timer);
-      stagesEl.querySelectorAll('.foxthink-stage').forEach(r => { r.classList.add('done'); r.classList.remove('active'); });
-      if (timerEl) timerEl.textContent = ((Date.now()-start)/1000).toFixed(1) + 's';
-    }
-  };
 }
+
 function hideTyping(){
-  if (foxthinkState?.finish) foxthinkState.finish();
+  if (window.__foxthinkTimer){
+    clearInterval(window.__foxthinkTimer);
+    window.__foxthinkTimer = null;
+  }
   if (window.__foxthinkStartTime){
     window.__foxintLastThinkTime = (Date.now() - window.__foxthinkStartTime) / 1000;
   }
   const t = document.getElementById('typing');
   if (t){
-    // НЕ удаляем — превращаем в постоянный FoxThink-блок
     t.classList.add('foxthink-done');
-    t.id = 'foxthinkPanel'; // переназначаем id
-    // Блокируем все анимации внутри
-    const stagesEl = t.querySelector('#foxthinkStages');
-    if (stagesEl){
-      stagesEl.querySelectorAll('.foxthink-stage').forEach(r => {
-        r.classList.add('done');
-        r.classList.remove('active');
-      });
-    }
-    // Меняем таймер на финальное время
+    t.id = 'foxthinkPanel';
     const timerEl = t.querySelector('#foxthinkTimer');
     if (timerEl && window.__foxthinkStartTime){
       timerEl.textContent = ((Date.now() - window.__foxthinkStartTime) / 1000).toFixed(1) + 's';

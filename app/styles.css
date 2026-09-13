@@ -1978,3 +1978,100 @@ body::before{
 
 /* Убираем старый thought-block, он больше не нужен */
 .thought-block{ display: none !important; }
+
+/* ============ FOXTHINK — загрузка и раскрытие ============ */
+.foxthink-loading{
+  display: flex;
+  gap: 5px;
+  padding: 8px 2px;
+  align-items: center;
+}
+.foxthink-loading-dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: .4;
+  animation: loadPulse 1.4s infinite ease-in-out;
+}
+.foxthink-loading-dot:nth-child(2){
+  animation-delay: .2s;
+  background: var(--violet, #a78bfa);
+}
+.foxthink-loading-dot:nth-child(3){
+  animation-delay: .4s;
+  background: var(--mint, #34d399);
+}
+@keyframes loadPulse{
+  0%, 80%, 100% { transform: scale(1); opacity: .3; }
+  40% { transform: scale(1.4); opacity: 1; }
+}
+
+/* Раскрытие панели по клику на шапку */
+.foxthink-msg .foxthink-reasoning{
+  display: none;
+  animation: fadeInReasoning .35s ease;
+}
+.foxthink-msg.expanded .foxthink-reasoning{
+  display: block;
+}
+@keyframes fadeInReasoning{
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Хедер панели кликабельный */
+.foxthink-msg .foxthink-header{
+  transition: background .2s;
+  border-radius: 8px;
+  padding: 4px 6px;
+  margin: -4px -6px 6px;
+}
+.foxthink-msg .foxthink-header:hover{
+  background: var(--accent-soft, rgba(91,141,255,.12));
+}
+.foxthink-msg .foxthink-header::after{
+  content: '▸';
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 14px;
+  transition: transform .25s ease;
+  padding-left: 8px;
+}
+.foxthink-msg.expanded .foxthink-header::after{
+  transform: rotate(90deg);
+}
+
+.foxthink-reasoning{
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  font-style: italic;
+}
+.foxthink-reasoning-title{
+  font-style: normal;
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+/* Скрыть старый thought-block */
+.thought-block{ display: none !important; }
+
+.foxthink-loading{display:flex;gap:6px;padding:10px 2px;align-items:center}
+.foxthink-loading-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:.4;animation:loadPulse 1.4s infinite ease-in-out}
+.foxthink-loading-dot:nth-child(2){animation-delay:.2s;background:var(--violet,#a78bfa)}
+.foxthink-loading-dot:nth-child(3){animation-delay:.4s;background:var(--mint,#34d399)}
+@keyframes loadPulse{0%,80%,100%{transform:scale(1);opacity:.3}40%{transform:scale(1.4);opacity:1}}
+.foxthink-msg .foxthink-reasoning{display:none;margin-top:10px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;line-height:1.6;color:var(--ink-soft);white-space:pre-wrap;font-style:italic}
+.foxthink-msg.expanded .foxthink-reasoning{display:block;animation:fadeInReasoning .35s ease}
+@keyframes fadeInReasoning{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.foxthink-reasoning-title{font-style:normal;font-weight:700;font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.thought-block{display:none !important}
