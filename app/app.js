@@ -38,7 +38,7 @@ function buildSystemPrompt(){
     const lang = window.FoxFeatures.getLangPrompt();
     if (lang) p += '\n\nЯЗЫК: ' + lang;
     if (window.FoxFeatures.isCoTEnabled()){
-      p += '\n\nПеред ответом покажи рассуждения в блоке [think]...[/think], затем сам ответ.';
+      p += '\n\n';
     }
   }
   return p;
@@ -477,22 +477,15 @@ function appendMsg(role, text, opts = {}){
   b.className = 'msg-bubble';
   let html = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
 
-  // Chain-of-thought — [think]...[/think] в отдельный блок сверху
+  // Разбор рассуждений — [think]...[/think] в отдельный блок
   if (role === 'ai' && !opts.raw){
     const thinkRegex = /\[think\]([\s\S]*?)\[\/think\]/i;
     const m = html.match(thinkRegex);
     if (m){
       const thinkContent = m[1].trim();
       const answerContent = html.replace(thinkRegex, '').trim();
-      html = '<div class="think-block">' +
-        '<div class="think-header">' +
-          '<span class="think-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg></span>' +
-          '<span class="think-title">Размышления</span>' +
-          '<span class="think-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>' +
-        '</div>' +
-        '<div class="think-content">' + thinkContent + '</div>' +
-      '</div>' +
-      '<div class="answer-block">' + (answerContent || '<em>Модель не дала финальный ответ</em>') + '</div>';
+      const elapsed = (window.__foxintLastThinkTime || 0).toFixed(1);
+      html = '<div class="thought-block"><div class="thought-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg><span>Размышления</span><span class="thought-time">· ' + elapsed + 'с</span></div><div class="thought-body">' + thinkContent + '</div></div><div class="answer-block">' + (answerContent || thinkContent) + '</div>';
     }
   }
 
@@ -514,6 +507,15 @@ function appendMsg(role, text, opts = {}){
     t.addEventListener('click', (e) => {
       e.stopPropagation();
       const block = t.closest('.think-block');
+      if (block) block.classList.toggle('open');
+    });
+  });
+
+  // Клик на thought-head раскрывает рассуждения
+  b.querySelectorAll('.thought-head').forEach(h => {
+    h.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const block = h.closest('.thought-block');
       if (block) block.classList.toggle('open');
     });
   });
@@ -578,6 +580,7 @@ function showTyping(userText){
   }
   stageTick = setTimeout(next, 500);
   const start = Date.now();
+  window.__foxthinkStartTime = start;
   const timer = setInterval(() => {
     if (finished){ clearInterval(timer); return; }
     if (timerEl) timerEl.textContent = ((Date.now()-start)/1000).toFixed(1) + 's';
@@ -593,6 +596,9 @@ function showTyping(userText){
 }
 function hideTyping(){
   if (foxthinkState?.finish) foxthinkState.finish();
+  if (window.__foxthinkStartTime){
+    window.__foxintLastThinkTime = (Date.now() - window.__foxthinkStartTime) / 1000;
+  }
   const t = document.getElementById('typing');
   if (t){ t.classList.add('foxthink-done'); setTimeout(() => t.remove(), 200); }
   foxthinkState = null;
