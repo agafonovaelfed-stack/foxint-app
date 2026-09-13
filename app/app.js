@@ -30,6 +30,20 @@ const SYSTEM_PROMPT = `Ты — Foxint. OSINT-ассистент для расс
 3. На вопрос "что умеешь" — только список выше.
 4. Живо, без воды. Markdown уместен.`;
 
+function buildSystemPrompt(){
+  let p = SYSTEM_PROMPT.trim();
+  if (window.FoxFeatures){
+    const persona = window.FoxFeatures.getPersonaPrompt();
+    if (persona) p += '\n\nПЕРСОНА: ' + persona;
+    const lang = window.FoxFeatures.getLangPrompt();
+    if (lang) p += '\n\nЯЗЫК: ' + lang;
+    if (window.FoxFeatures.isCoTEnabled()){
+      p += '\n\nПеред ответом покажи рассуждения в блоке [think]...[/think], затем сам ответ.';
+    }
+  }
+  return p;
+}
+
 const THEMES = {
   deepspace: { name: 'Deep Space', particleType: 'deepspace', previewBg: 'radial-gradient(circle at 30% 30%, #1a2a5a 0%, #05070f 100%)', previewDot: '#5b8dff', themeColor: '#05070f' },
   ember:     { name: 'Ember',      particleType: 'ember',     previewBg: 'linear-gradient(135deg,#0d0a08 0%,#3a1f10 50%,#ff6b1a 100%)', previewDot: '#ff6b1a', themeColor: '#0d0a08' },
