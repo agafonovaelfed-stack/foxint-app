@@ -1426,3 +1426,262 @@ body::before{
     transition-duration:.15s !important;
   }
 }
+
+/* ============ THINK BLOCK ============ */
+.think-block{
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all .25s ease;
+}
+.think-header{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .2px;
+}
+.think-header:hover{
+  background: var(--accent-soft);
+}
+.think-icon{
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.think-icon svg{
+  width: 16px;
+  height: 16px;
+}
+.think-title{
+  flex: 1;
+}
+.think-toggle{
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .25s ease;
+  flex-shrink: 0;
+}
+.think-toggle svg{
+  width: 14px;
+  height: 14px;
+}
+.think-block.open .think-toggle{
+  transform: rotate(180deg);
+}
+.think-content{
+  display: none;
+  padding: 0 14px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 0;
+  font-style: italic;
+}
+.think-block.open .think-content{
+  display: block;
+}
+.answer-block{
+  color: var(--ink);
+}
+
+/* ============ КАСТОМНЫЙ SELECT ============ */
+.fx-select{
+  position: relative;
+  min-width: 130px;
+  flex-shrink: 0;
+}
+.fx-select-btn{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.fx-select-btn:hover{
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.fx-select.open .fx-select-btn{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.fx-select-label{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fx-select-arrow{
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .25s ease;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.fx-select-arrow svg{
+  width: 14px;
+  height: 14px;
+}
+.fx-select.open .fx-select-arrow{
+  transform: rotate(180deg);
+}
+.fx-select-menu{
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  z-index: 100;
+  opacity: 0;
+  transform: translateY(-6px) scale(.96);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: all .2s cubic-bezier(.34,1.56,.64,1);
+}
+.fx-select.open .fx-select-menu{
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.fx-select-item{
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all .15s;
+}
+.fx-select-item:hover{
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.fx-select-item.active{
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ============ ИКОНКИ В НАСТРОЙКАХ ============ */
+.setting-row-icon svg{
+  width: 18px;
+  height: 18px;
+  display: block;
+  color: var(--accent);
+}
+.tool-btn .setting-row-icon svg{
+  width: 18px;
+  height: 18px;
+}
+
+/* ============ THINK BLOCK ============ */
+.think-block{
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all .25s ease;
+}
+.think-header{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .2px;
+}
+.think-header:hover{
+  background: var(--accent-soft);
+}
+.think-icon{
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.think-icon svg{
+  width: 16px;
+  height: 16px;
+}
+.think-title{
+  flex: 1;
+}
+.think-toggle{
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .25s ease;
+  flex-shrink: 0;
+}
+.think-toggle svg{
+  width: 14px;
+  height: 14px;
+}
+.think-block.open .think-toggle{
+  transform: rotate(180deg);
+}
+.think-content{
+  display: none;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  border-top: 1px solid var(--line);
+  font-style: italic;
+}
+.think-block.open .think-content{
+  display: block;
+}
+.answer-block{
+  color: var(--ink);
+}

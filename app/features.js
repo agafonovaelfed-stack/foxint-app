@@ -1,9 +1,12 @@
-/* Foxint AI — Features v1 — часть 1 */
+/* Foxint AI — Features v2 (fix pack) */
 window._fx = window._fx || {};
 
 (function(){
 'use strict';
 
+/* =========================================================
+   СОСТОЯНИЕ
+   ========================================================= */
 const FEAT = {
   font: localStorage.getItem('foxint.font') || 'inter',
   accent: localStorage.getItem('foxint.accent') || '',
@@ -15,49 +18,74 @@ const FEAT = {
   refId: localStorage.getItem('foxint.refId') || ''
 };
 
+/* =========================================================
+   ШРИФТЫ — встроенные (без внешних загрузок, чтобы работали всегда)
+   ========================================================= */
 const FONTS = {
-  inter:   { name: 'Inter',     stack: "'Inter', -apple-system, sans-serif" },
-  manrope: { name: 'Manrope',   stack: "'Manrope', -apple-system, sans-serif", url: 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap' },
-  georgia: { name: 'Серифный',  stack: "Georgia, 'Times New Roman', serif" },
-  mono:    { name: 'Моно',      stack: "ui-monospace, 'SF Mono', Menlo, monospace" },
-  system:  { name: 'Системный', stack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }
+  inter:   { name: 'Inter',     stack: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" },
+  system:  { name: 'Системный', stack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif" },
+  georgia: { name: 'Серифный',  stack: "Georgia, 'Times New Roman', Times, serif" },
+  mono:    { name: 'Моно',      stack: "ui-monospace, 'SF Mono', Monaco, Consolas, monospace" },
+  rounded: { name: 'Скругл.',   stack: "'SF Pro Rounded', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif" }
 };
-
-if (FEAT.font === 'manrope' && FONTS.manrope.url){
-  const l = document.createElement('link');
-  l.rel = 'stylesheet'; l.href = FONTS.manrope.url;
-  document.head.appendChild(l);
-}
 
 function applyFont(id){
   const f = FONTS[id] || FONTS.inter;
-  document.body.style.fontFamily = f.stack;
+  document.body.style.setProperty('font-family', f.stack, 'important');
+  // Плюс инжектим глобально
+  let styleEl = document.getElementById('fxFontStyle');
+  if (!styleEl){
+    styleEl = document.createElement('style');
+    styleEl.id = 'fxFontStyle';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    html, body, button, input, textarea, select, .bubble, .msg-bubble, .sidebar, .settings {
+      font-family: ${f.stack} !important;
+    }
+  `;
   FEAT.font = id;
   localStorage.setItem('foxint.font', id);
 }
 
+/* =========================================================
+   АКЦЕНТ — применяем КО ВСЕЙ ПАЛИТРЕ, а не только --accent
+   ========================================================= */
 function hexToRgb(hex){
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!m) return { r: 91, g: 141, b: 255 };
   const n = parseInt(m[1], 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
-
 function applyAccent(hex){
+  const root = document.documentElement;
   if (!hex){
-    document.documentElement.style.removeProperty('--accent');
-    document.documentElement.style.removeProperty('--accent-soft');
-    document.documentElement.style.removeProperty('--accent-glow');
+    ['--accent','--accent-soft','--accent-glow','--coral','--coral-soft','--coral-glow','--user-grad'].forEach(v => root.style.removeProperty(v));
   } else {
     const rgb = hexToRgb(hex);
-    document.documentElement.style.setProperty('--accent', hex);
-    document.documentElement.style.setProperty('--accent-soft', `rgba(${rgb.r},${rgb.g},${rgb.b},0.15)`);
-    document.documentElement.style.setProperty('--accent-glow', `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`);
+    root.style.setProperty('--accent', hex);
+    root.style.setProperty('--accent-soft', `rgba(${rgb.r},${rgb.g},${rgb.b},0.15)`);
+    root.style.setProperty('--accent-glow', `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`);
+    root.style.setProperty('--coral', hex);
+    root.style.setProperty('--coral-soft', `rgba(${rgb.r},${rgb.g},${rgb.b},0.15)`);
+    root.style.setProperty('--coral-glow', `rgba(${rgb.r},${rgb.g},${rgb.b},0.35)`);
+    root.style.setProperty('--user-grad', `linear-gradient(135deg, ${hex} 0%, ${shadeHex(hex, -30)} 100%)`);
   }
   FEAT.accent = hex;
   localStorage.setItem('foxint.accent', hex);
 }
+function shadeHex(hex, percent){
+  const num = parseInt(hex.replace('#',''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+  const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+  return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+}
 
+/* =========================================================
+   ЗВУКИ
+   ========================================================= */
 let audioCtx = null;
 function ensureAudio(){
   if (!audioCtx){ try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
@@ -97,17 +125,84 @@ function showMiniToast(msg){
   t._timer = setTimeout(() => t.classList.remove('show'), 2000);
 }
 
+/* SVG иконки для настроек */
+const ICONS = {
+  persona: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  lang: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg>',
+  font: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+  color: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>',
+  sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
+  typing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  cot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>',
+  summary: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg>',
+  ref: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+};
+
+/* =========================================================
+   КАСТОМНЫЙ SELECT — вместо системного <select>
+   ========================================================= */
+function createCustomSelect(options, currentValue, onChange){
+  const wrapper = document.createElement('div');
+  wrapper.className = 'fx-select';
+  const btn = document.createElement('button');
+  btn.className = 'fx-select-btn';
+  const label = document.createElement('span');
+  label.className = 'fx-select-label';
+  label.textContent = options[currentValue]?.name || '';
+  const arrow = document.createElement('span');
+  arrow.className = 'fx-select-arrow';
+  arrow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  btn.appendChild(label); btn.appendChild(arrow);
+  wrapper.appendChild(btn);
+
+  const menu = document.createElement('div');
+  menu.className = 'fx-select-menu';
+  Object.entries(options).forEach(([k, v]) => {
+    const item = document.createElement('button');
+    item.className = 'fx-select-item' + (k === currentValue ? ' active' : '');
+    item.textContent = v.name;
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      label.textContent = v.name;
+      menu.querySelectorAll('.fx-select-item').forEach(it => it.classList.remove('active'));
+      item.classList.add('active');
+      wrapper.classList.remove('open');
+      onChange(k);
+    });
+    menu.appendChild(item);
+  });
+  wrapper.appendChild(menu);
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.fx-select.open').forEach(s => { if (s !== wrapper) s.classList.remove('open'); });
+    wrapper.classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
+  });
+
+  return wrapper;
+}
+
+/* =========================================================
+   ЭКСПОРТ БАЗЫ
+   ========================================================= */
 window._fx.FEAT = FEAT;
 window._fx.FONTS = FONTS;
 window._fx.SOUNDS = SOUNDS;
+window._fx.ICONS = ICONS;
 window._fx.showMiniToast = showMiniToast;
 window._fx.applyFont = applyFont;
 window._fx.applyAccent = applyAccent;
-window._fx.hexToRgb = hexToRgb;
-console.log('[Foxint] Часть 1 загружена');
+window._fx.createCustomSelect = createCustomSelect;
+window._fx.shadeHex = shadeHex;
+
+console.log('[Foxint] База загружена');
 })();
 
-/* Foxint AI — Features — часть 2 */
+/* ============ Часть 2 ============ */
 (function(){
 'use strict';
 
@@ -211,13 +306,14 @@ window._fx.addMessageActions = addMessageActions;
 console.log('[Foxint] Часть 2 загружена');
 })();
 
-/* Foxint AI — Features — часть 3 */
+/* ============ Часть 3 ============ */
 (function(){
 'use strict';
 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const showMiniToast = window._fx.showMiniToast;
 
+/* Редактирование user-сообщения */
 function addEditToUserMessage(msgEl){
   if (!msgEl) return;
   const bubble = msgEl.querySelector('.msg-bubble');
@@ -226,7 +322,7 @@ function addEditToUserMessage(msgEl){
   const btn = document.createElement('button');
   btn.className = 'msg-edit';
   btn.title = 'Редактировать';
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
   btn.addEventListener('click', () => editUserMessage(msgEl, bubble));
   bubble.appendChild(btn);
 }
@@ -250,18 +346,22 @@ function editUserMessage(msgEl, bubble){
   });
 }
 
+/* Персоны */
 const PERSONAS = {
   default:    { name: 'Обычный',    prompt: '' },
   detective:  { name: 'Детектив',   prompt: 'Отвечай как опытный детектив: сухо, по фактам, с гипотезами и вопросами для проверки.' },
   journalist: { name: 'Журналист',  prompt: 'Отвечай как журналист: цепляющие заголовки, суть в первом абзаце, дальше — детали и контекст.' },
   analyst:    { name: 'Аналитик',   prompt: 'Отвечай как аналитик: структура, списки, цифры, выводы, риски.' }
 };
+
+/* Языки */
 const LANGS = {
   ru: { name: 'Русский', prompt: 'Отвечай на русском языке.' },
   en: { name: 'English', prompt: 'Always respond in English.' },
   es: { name: 'Español', prompt: 'Responde siempre en español.' }
 };
 
+/* Сводка диалога */
 async function summarizeChat(){
   if (!window.__foxint_getChat || !window.__foxint_ask){ showMiniToast('Недоступно'); return; }
   const chat = window.__foxint_getChat();
@@ -290,7 +390,7 @@ window._fx.summarizeChat = summarizeChat;
 console.log('[Foxint] Часть 3 загружена');
 })();
 
-/* Foxint AI — Features — часть 4 */
+/* ============ Часть 4 ============ */
 (function(){
 'use strict';
 
@@ -298,10 +398,13 @@ const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>'
 const FEAT = window._fx.FEAT;
 const FONTS = window._fx.FONTS;
 const SOUNDS = window._fx.SOUNDS;
+const ICONS = window._fx.ICONS;
 const showMiniToast = window._fx.showMiniToast;
 const applyFont = window._fx.applyFont;
 const applyAccent = window._fx.applyAccent;
+const createCustomSelect = window._fx.createCustomSelect;
 
+/* PDF */
 async function loadPdfJs(){
   if (window.pdfjsLib) return window.pdfjsLib;
   return new Promise((resolve, reject) => {
@@ -329,6 +432,7 @@ async function readPdf(file){
 }
 window._fx.readPdf = readPdf;
 
+/* Реф-ссылки */
 function copyRefLink(){
   const user = window.FoxAuth?.getCurrentUser?.();
   const id = user?.id ? user.id.slice(0, 8) : 'guest';
@@ -344,12 +448,16 @@ function copyRefLink(){
   }
 })();
 
+/* Онбординг */
 function showOnboarding(){
   if (localStorage.getItem('foxint.onboarded') === '1') return;
   const slides = [
-    { title: 'Привет, я Foxint', text: 'OSINT-ассистент. Помогу разобрать кейс, найти людей и компании по открытым источникам, написать текст или код.', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>' },
-    { title: 'Команды для OSINT', text: 'Пиши прямо в чат:\n• .u ник — поиск username\n• .i IP — геолокация\n• .e email — проверка email\n• .d домен — DNS\n• .b email — утечки', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' },
-    { title: 'Всё готово', text: 'Прикрепи файлы, используй граф связей, выбирай тему и персону. Foxint подстроится под твой стиль.', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="40" height="40"><polyline points="20 6 9 17 4 12"/></svg>' }
+    { title: 'Привет, я Foxint', text: 'OSINT-ассистент. Помогу разобрать кейс, найти людей и компании по открытым источникам, написать текст или код.',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="48" height="48" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
+    { title: 'Команды для OSINT', text: 'Пиши прямо в чат:\n.u ник — поиск username\n.i IP — геолокация\n.e email — проверка email\n.d домен — DNS\n.b email — утечки',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="48" height="48" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>' },
+    { title: 'Всё готово', text: 'Прикрепи файлы, используй граф связей, выбирай тему и персону. Foxint подстроится под твой стиль.',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="48" height="48" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' }
   ];
   let idx = 0;
   const screen = document.createElement('div');
@@ -373,61 +481,139 @@ function showOnboarding(){
 }
 window._fx.showOnboarding = showOnboarding;
 
+/* Панель настроек — SVG-иконки + кастомные селекты */
 function injectSettingsSection(){
   const body = document.querySelector('.settings-body');
   if (!body || body.querySelector('#fxNewSection')) return;
+
   const section = document.createElement('div');
   section.className = 'section';
   section.id = 'fxNewSection';
-  section.innerHTML = '<div class="section-title">Foxint Plus</div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">⚙</div><div class="setting-row-info"><b>Персона</b><span id="fxPersonaLabel">' + window._fx.PERSONAS[FEAT.persona].name + '</span></div><select id="fxPersonaSel" class="fx-select">' + Object.entries(window._fx.PERSONAS).map(([k,v]) => '<option value="' + k + '"' + (k === FEAT.persona ? ' selected' : '') + '>' + v.name + '</option>').join('') + '</select></div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🌐</div><div class="setting-row-info"><b>Язык ответов AI</b><span id="fxLangLabel">' + window._fx.LANGS[FEAT.lang].name + '</span></div><select id="fxLangSel" class="fx-select">' + Object.entries(window._fx.LANGS).map(([k,v]) => '<option value="' + k + '"' + (k === FEAT.lang ? ' selected' : '') + '>' + v.name + '</option>').join('') + '</select></div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">📝</div><div class="setting-row-info"><b>Шрифт интерфейса</b><span id="fxFontLabel">' + FONTS[FEAT.font].name + '</span></div><select id="fxFontSel" class="fx-select">' + Object.entries(FONTS).map(([k,v]) => '<option value="' + k + '"' + (k === FEAT.font ? ' selected' : '') + '>' + v.name + '</option>').join('') + '</select></div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🎨</div><div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div><input type="color" id="fxAccentColor" value="' + (FEAT.accent || '#5b8dff') + '" class="fx-color"><button class="fx-mini-btn" id="fxAccentReset">Сброс</button></div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🔊</div><div class="setting-row-info"><b>Звуки</b><span>Клик при отправке/ответе</span></div><button class="switch' + (FEAT.sound ? ' on' : '') + '" id="fxSoundSw"></button></div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">✏️</div><div class="setting-row-info"><b>Анимация печатается</b><span>Ответ по буквам</span></div><button class="switch' + (FEAT.typing ? ' on' : '') + '" id="fxTypingSw"></button></div>' +
-    '<div class="setting-row"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">✅</div><div class="setting-row-info"><b>Chain-of-thought</b><span>Показывать рассуждения</span></div><button class="switch' + (FEAT.cot ? ' on' : '') + '" id="fxCotSw"></button></div>' +
-    '<div class="tool-btn" id="fxSummarizeBtn"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">📋</div><div class="setting-row-info"><b>Сводка диалога</b><span>Сжать в 5 пунктов</span></div><svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>' +
-    '<div class="tool-btn" id="fxRefBtn"><div class="setting-row-icon" style="background:var(--accent-soft);color:var(--accent)">🔗</div><div class="setting-row-info"><b>Пригласить друга</b><span>Скопировать реф-ссылку</span></div><svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>';
-  body.insertBefore(section, body.firstChild);
 
-  section.querySelector('#fxPersonaSel').addEventListener('change', e => {
-    FEAT.persona = e.target.value;
-    localStorage.setItem('foxint.persona', FEAT.persona);
-    section.querySelector('#fxPersonaLabel').textContent = window._fx.PERSONAS[FEAT.persona].name;
-  });
-  section.querySelector('#fxLangSel').addEventListener('change', e => {
-    FEAT.lang = e.target.value;
-    localStorage.setItem('foxint.lang', FEAT.lang);
-    section.querySelector('#fxLangLabel').textContent = window._fx.LANGS[FEAT.lang].name;
-  });
-  section.querySelector('#fxFontSel').addEventListener('change', e => {
-    applyFont(e.target.value);
-    section.querySelector('#fxFontLabel').textContent = FONTS[FEAT.font].name;
-  });
-  section.querySelector('#fxAccentColor').addEventListener('input', e => applyAccent(e.target.value));
-  section.querySelector('#fxAccentReset').addEventListener('click', () => {
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.textContent = 'Foxint Plus';
+  section.appendChild(title);
+
+  /* Персона */
+  section.appendChild(makeRow(ICONS.persona, 'Персона', createCustomSelect(
+    window._fx.PERSONAS, FEAT.persona, (v) => {
+      FEAT.persona = v;
+      localStorage.setItem('foxint.persona', v);
+    }
+  )));
+
+  /* Язык */
+  section.appendChild(makeRow(ICONS.lang, 'Язык ответов AI', createCustomSelect(
+    window._fx.LANGS, FEAT.lang, (v) => {
+      FEAT.lang = v;
+      localStorage.setItem('foxint.lang', v);
+    }
+  )));
+
+  /* Шрифт */
+  section.appendChild(makeRow(ICONS.font, 'Шрифт интерфейса', createCustomSelect(
+    FONTS, FEAT.font, (v) => { applyFont(v); }
+  )));
+
+  /* Цвет акцента */
+  const colorRow = document.createElement('div');
+  colorRow.className = 'setting-row';
+  colorRow.innerHTML = '<div class="setting-row-icon">' + ICONS.color + '</div><div class="setting-row-info"><b>Цвет акцента</b><span>Своя палитра</span></div>';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = FEAT.accent || '#5b8dff';
+  colorInput.className = 'fx-color';
+  colorInput.addEventListener('input', e => applyAccent(e.target.value));
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'fx-mini-btn';
+  resetBtn.textContent = 'Сброс';
+  resetBtn.addEventListener('click', () => {
     applyAccent('');
-    section.querySelector('#fxAccentColor').value = '#5b8dff';
+    colorInput.value = '#5b8dff';
   });
-  section.querySelector('#fxSoundSw').addEventListener('click', e => {
+  colorRow.appendChild(colorInput);
+  colorRow.appendChild(resetBtn);
+  section.appendChild(colorRow);
+
+  /* Звуки */
+  const soundRow = makeRow(ICONS.sound, 'Звуки', 'Клик при отправке/ответе');
+  const soundSw = document.createElement('button');
+  soundSw.className = 'switch' + (FEAT.sound ? ' on' : '');
+  soundSw.addEventListener('click', () => {
     FEAT.sound = !FEAT.sound;
-    e.target.classList.toggle('on', FEAT.sound);
+    soundSw.classList.toggle('on', FEAT.sound);
     localStorage.setItem('foxint.sound', FEAT.sound ? '1' : '0');
     if (FEAT.sound) SOUNDS.click();
   });
-  section.querySelector('#fxTypingSw').addEventListener('click', e => {
+  soundRow.appendChild(soundSw);
+  section.appendChild(soundRow);
+
+  /* Анимация печатается */
+  const typingRow = makeRow(ICONS.typing, 'Анимация печатается', 'Ответ по буквам');
+  const typingSw = document.createElement('button');
+  typingSw.className = 'switch' + (FEAT.typing ? ' on' : '');
+  typingSw.addEventListener('click', () => {
     FEAT.typing = !FEAT.typing;
-    e.target.classList.toggle('on', FEAT.typing);
+    typingSw.classList.toggle('on', FEAT.typing);
     localStorage.setItem('foxint.typing', FEAT.typing ? '1' : '0');
   });
-  section.querySelector('#fxCotSw').addEventListener('click', e => {
+  typingRow.appendChild(typingSw);
+  section.appendChild(typingRow);
+
+  /* CoT */
+  const cotRow = makeRow(ICONS.cot, 'Chain-of-thought', 'Показывать размышления');
+  const cotSw = document.createElement('button');
+  cotSw.className = 'switch' + (FEAT.cot ? ' on' : '');
+  cotSw.addEventListener('click', () => {
     FEAT.cot = !FEAT.cot;
-    e.target.classList.toggle('on', FEAT.cot);
+    cotSw.classList.toggle('on', FEAT.cot);
     localStorage.setItem('foxint.cot', FEAT.cot ? '1' : '0');
   });
-  section.querySelector('#fxSummarizeBtn').addEventListener('click', () => window._fx.summarizeChat());
-  section.querySelector('#fxRefBtn').addEventListener('click', copyRefLink);
+  cotRow.appendChild(cotSw);
+  section.appendChild(cotRow);
+
+  /* Сводка */
+  const summaryBtn = makeToolBtn(ICONS.summary, 'Сводка диалога', 'Сжать в 5 пунктов');
+  summaryBtn.addEventListener('click', () => window._fx.summarizeChat());
+  section.appendChild(summaryBtn);
+
+  /* Реф-ссылка */
+  const refBtn = makeToolBtn(ICONS.ref, 'Пригласить друга', 'Скопировать реф-ссылку');
+  refBtn.addEventListener('click', copyRefLink);
+  section.appendChild(refBtn);
+
+  body.insertBefore(section, body.firstChild);
+
+  function makeRow(icon, title, rightEl){
+    const row = document.createElement('div');
+    row.className = 'setting-row';
+    const ic = document.createElement('div');
+    ic.className = 'setting-row-icon';
+    ic.innerHTML = icon;
+    const info = document.createElement('div');
+    info.className = 'setting-row-info';
+    const b = document.createElement('b');
+    b.textContent = title;
+    info.appendChild(b);
+    row.appendChild(ic);
+    row.appendChild(info);
+    if (typeof rightEl === 'string'){
+      const span = document.createElement('span');
+      span.textContent = rightEl;
+      info.appendChild(span);
+    } else if (rightEl){
+      row.appendChild(rightEl);
+    }
+    return row;
+  }
+
+  function makeToolBtn(icon, title, sub){
+    const btn = document.createElement('div');
+    btn.className = 'tool-btn';
+    btn.innerHTML = '<div class="setting-row-icon">' + icon + '</div><div class="setting-row-info"><b>' + title + '</b><span>' + sub + '</span></div><svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>';
+    return btn;
+  }
 }
 
 window.FoxFeatures = {
