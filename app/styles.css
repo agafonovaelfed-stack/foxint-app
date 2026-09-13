@@ -1950,3 +1950,31 @@ body::before{
   color: var(--accent);
   margin-bottom: 8px;
 }
+
+/* ============ FOXTHINK с рассуждениями внутри ============ */
+.foxthink-msg.done,
+.foxthink-msg.foxthink-done{
+  /* панель остаётся в чате, не удаляем */
+}
+.foxthink-reasoning{
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  font-style: italic;
+}
+.foxthink-reasoning-title{
+  font-style: normal;
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+/* Убираем старый thought-block, он больше не нужен */
+.thought-block{ display: none !important; }

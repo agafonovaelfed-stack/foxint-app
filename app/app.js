@@ -477,17 +477,37 @@ function appendMsg(role, text, opts = {}){
   b.className = 'msg-bubble';
   let html = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
 
-  // Разбор рассуждений — [think]...[/think] в отдельный блок
+  // Рассуждения [think]...[/think] → в FoxThink-панель, а НЕ в bubble
   if (role === 'ai' && !opts.raw){
     const thinkRegex = /\[think\]([\s\S]*?)\[\/think\]/i;
     const m = html.match(thinkRegex);
     if (m){
       const thinkContent = m[1].trim();
-      const answerContent = html.replace(thinkRegex, '').trim();
-      const elapsed = (window.__foxintLastThinkTime || 0).toFixed(1);
-      const stagesHtml = window.__foxintLastStages || '';
-      html = '<div class="thought-block"><div class="thought-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg><span>FoxThink</span><span class="thought-time">· ' + elapsed + 'с</span></div><div class="thought-body">' + stagesHtml + '<div class="thought-reasoning">' + thinkContent + '</div></div></div><div class="answer-block">' + (answerContent || thinkContent) + '</div>';
-      window.__foxintLastStages = '';
+      // Убираем рассуждения из bubble — остаётся только финальный ответ
+      html = html.replace(thinkRegex, '').trim();
+      // Вставляем рассуждения в FoxThink-панель
+      const panel = document.getElementById('foxthinkPanel');
+      if (panel){
+        const body = panel.querySelector('.foxthink-bubble') || panel.querySelector('.msg-bubble');
+        if (body && !body.querySelector('.foxthink-reasoning')){
+          const reasoning = document.createElement('div');
+          reasoning.className = 'foxthink-reasoning';
+          reasoning.innerHTML = '<div class="foxthink-reasoning-title">Рассуждения</div>' + thinkContent;
+          body.appendChild(reasoning);
+        }
+      }
+      // Если ответа после think не осталось — не показываем пустой bubble
+      if (!html){
+        // оставляем только панель
+        if (window.__foxintSkipNextMsg) window.__foxintSkipNextMsg = true;
+      }
+    }
+    // Если в ответе нет финального текста — этот bubble не нужен
+    if (window.__foxintSkipNextMsg && !html){
+      d.remove?.();
+      // Пропускаем рендер
+      b.innerHTML = '';
+      return;
     }
   }
 
@@ -594,18 +614,22 @@ function hideTyping(){
   }
   const t = document.getElementById('typing');
   if (t){
+    // НЕ удаляем — превращаем в постоянный FoxThink-блок
+    t.classList.add('foxthink-done');
+    t.id = 'foxthinkPanel'; // переназначаем id
+    // Блокируем все анимации внутри
     const stagesEl = t.querySelector('#foxthinkStages');
     if (stagesEl){
       stagesEl.querySelectorAll('.foxthink-stage').forEach(r => {
         r.classList.add('done');
         r.classList.remove('active');
       });
-      window.__foxintLastStages = stagesEl.outerHTML;
-    } else {
-      window.__foxintLastStages = '';
     }
-    t.classList.add('foxthink-done');
-    setTimeout(() => t.remove(), 200);
+    // Меняем таймер на финальное время
+    const timerEl = t.querySelector('#foxthinkTimer');
+    if (timerEl && window.__foxthinkStartTime){
+      timerEl.textContent = ((Date.now() - window.__foxthinkStartTime) / 1000).toFixed(1) + 's';
+    }
   }
   foxthinkState = null;
 }
@@ -1022,7 +1046,11 @@ async function sendMsg(){
     const reply = await askGigaChat(text);
     hideTyping();
     if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
-    appendMsg('ai', reply);
+    // Если модель отдала только [think]...[/think] без финального текста — не рендерим пустой bubble
+    const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
+    if (cleanReply){
+      appendMsg('ai', reply);
+    }
     c.messages.push({ role: 'assistant', content: reply, ts: Date.now() });
     c.updatedAt = Date.now();
     saveChats();
@@ -1103,7 +1131,11 @@ window.__foxint_regenerate = async () => {
     const reply = await askGigaChat(prevUser.content);
     hideTyping();
     if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
-    appendMsg('ai', reply);
+    // Если модель отдала только [think]...[/think] без финального текста — не рендерим пустой bubble
+    const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
+    if (cleanReply){
+      appendMsg('ai', reply);
+    }
     c.messages.push({ role: 'assistant', content: reply, ts: Date.now() });
     c.updatedAt = Date.now();
     saveChats(); renderChatsList();
