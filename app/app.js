@@ -967,7 +967,11 @@ buildThemeGrid();
 if (switchParticles) switchParticles.classList.toggle('on', prefs.particles);
 applyTheme(prefs.theme);
 
+let appBooted = false;
+
 async function bootApp(user){
+  if (appBooted && user) return;
+  appBooted = true;
   await loadChats();
   renderChat(); renderChatsList();
   updateProfileUI(user);
@@ -977,8 +981,12 @@ if (window.FoxAuth){
   window.FoxAuth.onAuth('onLogin', (user) => { updateProfileUI(user); bootApp(user); });
   window.FoxAuth.onAuth('onLogout', () => { updateProfileUI(null); });
   window.FoxAuth.bootAuth();
+
+  setTimeout(() => {
+    if (!appBooted) bootApp(null);
+  }, 1500);
 } else {
-  bootApp();
+  bootApp(null);
 }
 
 function updateProfileUI(user){
