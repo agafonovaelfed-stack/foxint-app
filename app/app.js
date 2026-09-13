@@ -461,10 +461,37 @@ function appendMsg(role, text, opts = {}){
 
   const b = document.createElement('div');
   b.className = 'msg-bubble';
-  b.innerHTML = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
+  let html = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
+
+  // Chain-of-thought
+  if (role === 'ai' && !opts.raw && window.FoxFeatures && window.FoxFeatures.isCoTEnabled()){
+    html = html.replace(/\[think\]([\s\S]*?)\[\/think\]/g,
+      (_, inner) => `<details class="cot-block"><summary>Рассуждения</summary><div class="cot-body">${inner.trim()}</div></details>`);
+  }
+
+  b.innerHTML = html;
+
+  // Анимация «печатается» для AI
+  if (role === 'ai' && !opts.raw && window.FoxFeatures && window.FoxFeatures.isTypingEnabled()){
+    const finalHtml = b.innerHTML;
+    b.innerHTML = '';
+    window.FoxFeatures.typeIn(b, finalHtml);
+  }
 
   d.appendChild(av); d.appendChild(b);
   chatEl.appendChild(d);
+
+  // Доп. обработка
+  if (window.FoxFeatures){
+    if (role === 'ai'){
+      window.FoxFeatures.renderColorPalette(b);
+      window.FoxFeatures.addMessageActions(d, 'ai');
+    } else {
+      b.dataset.originalText = text;
+      window.FoxFeatures.addEditToUserMessage(d);
+    }
+  }
+
   if (window.Prism) setTimeout(() => Prism.highlightAllUnder(b), 0);
   scrollBottom();
 }
@@ -596,7 +623,7 @@ async function askGigaChat(text){
   const c = getActiveChat();
   const past = c.messages.slice(0, -1).slice(-12);
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT.trim() },
+    { role: 'system', content: buildSystemPrompt() },
     ...past.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '[сообщение]' })),
     { role: 'user', content: text }
   ];
@@ -901,6 +928,7 @@ async function sendMsg(){
   if (!text && !attachments.length) return;
   const c = getActiveChat(); if (!c) return;
   input.value = ''; input.style.height = 'auto'; send.disabled = true;
+  if (window.FoxFeatures) window.FoxFeatures.SOUNDS.send();
 
   /* OSINT-команды */
   const cmds = [
@@ -945,6 +973,7 @@ async function sendMsg(){
   try {
     const reply = await askGigaChat(text);
     hideTyping();
+    if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
     appendMsg('ai', reply);
     c.messages.push({ role: 'assistant', content: reply, ts: Date.now() });
     c.updatedAt = Date.now();
@@ -1007,5 +1036,45 @@ if (logoutBtn) logoutBtn.addEventListener('click', async () => {
     window.FoxAuth.showAuthScreen();
   }
 });
+
+/* Экспорт для features.js */
+window.__foxint_getChat = () => getActiveChat();
+window.__foxint_ask = (prompt) => askGigaChat(prompt);
+window.__foxint_regenerate = async () => {
+  const c = getActiveChat();
+  if (!c || !c.messages.length) return;
+  const lastAi = [...c.messages].reverse().find(m => m.role === 'assistant');
+  if (!lastAi) return;
+  const idx = c.messages.lastIndexOf(lastAi);
+  const prevUser = c.messages[idx - 1];
+  if (!prevUser) return;
+  c.messages.splice(idx, 1);
+  saveChats(); renderChat();
+  showTyping(prevUser.content);
+  try {
+    const reply = await askGigaChat(prevUser.content);
+    hideTyping();
+    if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
+    appendMsg('ai', reply);
+    c.messages.push({ role: 'assistant', content: reply, ts: Date.now() });
+    c.updatedAt = Date.now();
+    saveChats(); renderChatsList();
+  } catch(e){
+    hideTyping();
+    appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true });
+  }
+};
+window.__foxint_editAndResend = async (msgEl, newText) => {
+  const c = getActiveChat();
+  if (!c) return;
+  const allMsgs = chatEl.querySelectorAll('.msg.user');
+  const idx = Array.from(allMsgs).indexOf(msgEl);
+  if (idx < 0) return;
+  c.messages.splice(idx, c.messages.length - idx);
+  saveChats();
+  input.value = newText;
+  input.dispatchEvent(new Event('input'));
+  sendMsg();
+};
 
 addEventListener('load', () => { if (input && !IS_MOBILE) input.focus(); });
