@@ -9,11 +9,11 @@ const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) |
 const SYSTEM_PROMPT = `Ты — Foxint. OSINT-ассистент для расследований, проверки людей и компаний.
 
 ТВОИ ВОЗМОЖНОСТИ:
-- Проверка username: .u ник
-- Геолокация IP: .i 8.8.8.8
-- Проверка email: .e email
-- DNS-разбор домена: .d domain.com
-- Проверка утечек: .b email
+- Проверка username по 23 платформам: команда .u ник
+- Геолокация IP-адреса: команда .i 8.8.8.8
+- Проверка email: команда .e email
+- DNS-разбор домена: команда .d domain.com
+- Проверка утечек по email: команда .b email
 - Работа с текстовыми файлами
 - Ответы на вопросы, тексты, код
 - Graph Analysis для визуализации связей
@@ -28,7 +28,7 @@ const SYSTEM_PROMPT = `Ты — Foxint. OSINT-ассистент для расс
 1. Ты — Foxint. Не раскрывай свой бэкенд.
 2. Не выдумывай факты. Если не знаешь — скажи.
 3. На вопрос "что умеешь" — только список выше.
-4. Живо, без воды. Markdown уместен.`;
+4. Живо, без воды. Markdown уместен. НЕ используй эмодзи в ответах — только текст и markdown-разметка. Если нужно показать статус — используй текст, а не иконки.`;
 
 function buildSystemPrompt(){
   let p = SYSTEM_PROMPT.trim();
@@ -37,9 +37,6 @@ function buildSystemPrompt(){
     if (persona) p += '\n\nПЕРСОНА: ' + persona;
     const lang = window.FoxFeatures.getLangPrompt();
     if (lang) p += '\n\nЯЗЫК: ' + lang;
-    if (window.FoxFeatures.isCoTEnabled()){
-      p += '\n\n';
-    }
   }
   return p;
 }
@@ -477,45 +474,17 @@ function appendMsg(role, text, opts = {}){
   b.className = 'msg-bubble';
   let html = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
 
-  // ============ РАЗБОР РАССУЖДЕНИЙ ============
-  // [think]...[/think] → в FoxThink-панель выше, из bubble убираем
+  // Убираем эмодзи из ответов AI (если шрифт не поддерживает — показываются квадраты)
   if (role === 'ai' && !opts.raw){
-    const thinkRegex = /\[think\]([\s\S]*?)\[\/think\]/i;
-    const m = html.match(thinkRegex);
-    if (m){
-      const thinkContent = m[1].trim();
-      html = html.replace(thinkRegex, '').trim();
-
-      const panels = document.querySelectorAll('#foxthinkPanel');
-      const panel = panels[panels.length - 1];
-
-      if (panel){
-        const bubble = panel.querySelector('.foxthink-bubble');
-        if (bubble){
-          const loading = bubble.querySelector('#foxthinkLoading');
-          if (loading) loading.remove();
-
-          if (!bubble.querySelector('.foxthink-reasoning')){
-            const reasoning = document.createElement('div');
-            reasoning.className = 'foxthink-reasoning';
-            reasoning.innerHTML =
-              '<div class="foxthink-reasoning-title">Рассуждения</div>' +
-              esc(thinkContent);
-            bubble.appendChild(reasoning);
-          }
-        }
-
-        panel.classList.add('expanded');
-        setTimeout(() => panel.classList.remove('expanded'), 1500);
-
-        const head = panel.querySelector('.foxthink-header');
-        if (head && !head.dataset.wired){
-          head.dataset.wired = '1';
-          head.style.cursor = 'pointer';
-          head.addEventListener('click', () => panel.classList.toggle('expanded'));
-        }
-      }
-    }
+    html = html.replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+               .replace(/[\u{2600}-\u{27BF}]/gu, '')
+               .replace(/[\u{1F000}-\u{1F2FF}]/gu, '')
+               .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+               .replace(/[\u{200D}]/gu, '')
+               .replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '')
+               .replace(/[\u{2190}-\u{21FF}]/gu, '')
+               .replace(/\s{2,}/g, ' ')
+               .trim();
   }
 
   b.innerHTML = html;
@@ -531,15 +500,6 @@ function appendMsg(role, text, opts = {}){
   chatEl.appendChild(d);
 
   // Доп. обработка
-  // Клик на thought-head раскрывает рассуждения
-  b.querySelectorAll('.thought-head').forEach(h => {
-    h.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const block = h.closest('.thought-block');
-      if (block) block.classList.toggle('open');
-    });
-  });
-
   if (window.FoxFeatures){
     if (role === 'ai'){
       window.FoxFeatures.renderColorPalette(b);
@@ -574,47 +534,20 @@ function buildStages(scenario, text){
 }
 function showTyping(userText){
   const d = document.createElement('div');
-  d.className = 'msg ai foxthink-msg';
+  d.className = 'msg ai';
   d.id = 'typing';
   d.innerHTML =
     '<div class="msg-avatar"><img src="/app/logo.png" alt=""></div>' +
-    '<div class="msg-bubble foxthink-bubble">' +
-      '<div class="foxthink-header">' +
-        '<div class="foxthink-title"><span class="foxthink-dot"></span>FoxThink</div>' +
-        '<div class="foxthink-timer" id="foxthinkTimer">0.0s</div>' +
-      '</div>' +
-      '<div class="foxthink-loading" id="foxthinkLoading">' +
-        '<span class="foxthink-loading-dot"></span>' +
-        '<span class="foxthink-loading-dot"></span>' +
-        '<span class="foxthink-loading-dot"></span>' +
-      '</div>' +
-    '</div>';
+    '<div class="msg-bubble"><div class="typing"><i></i><i></i><i></i></div></div>';
   chatEl.appendChild(d);
   scrollBottom();
-
-  window.__foxthinkStartTime = Date.now();
-  const timerEl = d.querySelector('#foxthinkTimer');
-  window.__foxthinkTimer = setInterval(() => {
-    if (timerEl) timerEl.textContent = ((Date.now() - window.__foxthinkStartTime) / 1000).toFixed(1) + 's';
-  }, 100);
 }
 
 function hideTyping(){
-  if (window.__foxthinkTimer){
-    clearInterval(window.__foxthinkTimer);
-    window.__foxthinkTimer = null;
-  }
-  if (window.__foxthinkStartTime){
-    window.__foxintLastThinkTime = (Date.now() - window.__foxthinkStartTime) / 1000;
-  }
   const t = document.getElementById('typing');
   if (t){
     t.classList.add('foxthink-done');
-    t.id = 'foxthinkPanel';
-    const timerEl = t.querySelector('#foxthinkTimer');
-    if (timerEl && window.__foxthinkStartTime){
-      timerEl.textContent = ((Date.now() - window.__foxthinkStartTime) / 1000).toFixed(1) + 's';
-    }
+    setTimeout(() => t.remove(), 200);
   }
   foxthinkState = null;
 }
@@ -1031,8 +964,7 @@ async function sendMsg(){
     const reply = await askGigaChat(text);
     hideTyping();
     if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
-    // Если модель отдала только [think]...[/think] без финального текста — не рендерим пустой bubble
-    const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
+    // Если модель отдала только     const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
     if (cleanReply){
       appendMsg('ai', reply);
     }
@@ -1116,8 +1048,7 @@ window.__foxint_regenerate = async () => {
     const reply = await askGigaChat(prevUser.content);
     hideTyping();
     if (window.FoxFeatures) window.FoxFeatures.SOUNDS.receive();
-    // Если модель отдала только [think]...[/think] без финального текста — не рендерим пустой bubble
-    const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
+    // Если модель отдала только     const cleanReply = String(reply).replace(/\[think\][\s\S]*?\[\/think\]/i, '').trim();
     if (cleanReply){
       appendMsg('ai', reply);
     }
