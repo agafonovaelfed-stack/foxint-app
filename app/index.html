@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#fdf9f4">
+<meta name="theme-color" content="#0a0203">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Foxint">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Foxint AI</title>
-<link rel="icon" href="logo.png">
+<link rel="icon" href="/app/logo.png">
 <link rel="manifest" href="/app/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,51 +18,104 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="/app/styles.css">
 </head>
-<body data-theme="daylight">
+<body data-theme="deepspace">
+
 <canvas id="particles"></canvas>
-<div id="app">
-  <header>
-    <div class="logo-wrap"><img src="logo.png" alt="Foxint AI"></div>
-    <div class="brand"><b>Foxint AI</b><span>ассистент по расследованиям</span></div>
-    <div class="header-right">
-      <div class="status"><span class="dot" id="dot"></span><span id="statusText">готова</span></div>
-      <button class="settings-btn" id="chatsBtn" aria-label="Диалоги">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <span class="badge" id="chatsBadge">1</span>
-      </button>
-      <button class="settings-btn" id="settingsBtn" aria-label="Настройки">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+
+<!-- БОКОВАЯ ПАНЕЛЬ ЧАТОВ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo"><img src="/app/logo.png" alt="Foxint"></div>
+      <div class="sidebar-brand-text">
+        <b>Foxint AI</b>
+        <span>OSINT-ассистент</span>
+      </div>
+    </div>
+    <button class="sidebar-close" id="sidebarClose" aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <button class="new-chat-sidebar" id="newChatBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>Новый чат</span>
+  </button>
+
+  <div class="sidebar-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="text" id="chatsSearch" placeholder="Поиск чатов...">
+  </div>
+
+  <div class="sidebar-chats" id="chatsList"></div>
+
+  <div class="sidebar-footer">
+    <button class="sidebar-tool" id="settingsBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Настройки</span>
+    </button>
+    <button class="sidebar-tool" id="graphSidebarBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg>
+      <span>Graph Analysis</span>
+    </button>
+    <div class="sidebar-user" id="userBlock">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div class="user-info">
+        <div class="user-email" id="userEmail">Загрузка...</div>
+        <div class="user-status" id="userStatus">—</div>
+      </div>
+      <button class="user-logout" id="logoutBtn" title="Выйти" aria-label="Выйти">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
     </div>
+  </div>
+</aside>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ГЛАВНАЯ ЧАСТЬ -->
+<div class="app-main" id="appMain">
+  <header class="topbar">
+    <button class="topbar-btn topbar-menu" id="sidebarToggle" aria-label="Меню">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </button>
+    <div class="topbar-title" id="topbarTitle">Foxint AI</div>
+    <button class="topbar-btn" id="newChatBtnTop" aria-label="Новый чат">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
   </header>
+
   <div id="chat"></div>
   <div id="attachPreview"></div>
-  <div class="mode-bar" id="modeBar">
-    <button class="mode-pill active" data-m="auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="4"/></svg>Авто</button>
-    <button class="mode-pill" data-m="osint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>OSINT</button>
-    <button class="mode-pill" data-m="code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Код</button>
-    <button class="mode-pill" data-m="text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h14"/></svg>Текст</button>
-  </div>
+
   <div class="composer">
-    <div class="input-row">
-      <button class="icon-btn" id="attachBtn" aria-label="Прикрепить">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-      </button>
-      <input type="file" id="fileInput" style="display:none" multiple accept=".txt,.md,.json,.csv,.js,.ts,.jsx,.tsx,.py,.html,.htm,.css,.scss,.log,.xml,.yaml,.yml,.ini,.cfg,.conf,.sh,.bash,.sql,.rb,.go,.rs,.java,.c,.cpp,.h,.hpp,.php,.pl,.lua,.toml,.env">
-      <textarea id="input" rows="1" placeholder="Напишите сообщение..."></textarea>
-      <button class="send" id="send" disabled aria-label="Отправить">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-      </button>
+    <div class="input-wrap">
+      <textarea id="input" rows="1" placeholder="Спроси Foxint..."></textarea>
+      <div class="input-actions">
+        <button class="action-btn" id="attachBtn" aria-label="Прикрепить файл">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <input type="file" id="fileInput" style="display:none" multiple accept=".txt,.md,.json,.csv,.js,.ts,.jsx,.tsx,.py,.html,.htm,.css,.scss,.log,.xml,.yaml,.yml,.ini,.cfg,.conf,.sh,.bash,.sql,.rb,.go,.rs,.java,.c,.cpp,.h,.hpp,.php,.pl,.lua,.toml,.env">
+        <button class="action-btn" id="micBtn" aria-label="Голосовой ввод">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <button class="action-btn action-send" id="send" disabled aria-label="Отправить">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        </button>
+      </div>
     </div>
+    <div class="composer-hint">Foxint может ошибаться. Проверяй важное.</div>
   </div>
 </div>
 
+<!-- КНОПКА СКРОЛЛА ВНИЗ -->
 <button class="scroll-down" id="scrollDown" aria-label="Вниз">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 </button>
 
+<!-- НАСТРОЙКИ -->
 <div class="backdrop" id="backdrop"></div>
 <aside class="settings" id="settings">
   <div class="settings-header">
@@ -72,19 +125,8 @@
     </button>
   </div>
   <div class="settings-body">
-    <div class="section" id="profileSection" style="display:none">
-      <div class="section-title">Профиль</div>
-      <div class="profile-card" id="profileCard"></div>
-      <div class="tool-btn danger" id="logoutBtn">
-        <div class="setting-row-icon" style="background:rgba(239,68,68,.12); color:#ef4444">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </div>
-        <div class="setting-row-info"><b>Выйти из аккаунта</b><span>Данные останутся в облаке</span></div>
-        <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </div>
     <div class="section">
-      <div class="section-title">Внешний вид</div>
+      <div class="section-title">Тема оформления</div>
       <div class="theme-grid" id="themeGrid"></div>
     </div>
     <div class="section">
@@ -101,14 +143,7 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Инструменты</div>
-      <div class="tool-btn" id="graphBtn">
-        <div class="setting-row-icon" style="background:var(--violet-soft); color:var(--violet)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg>
-        </div>
-        <div class="setting-row-info"><b>Graph Analysis</b><span>Визуализация связей</span></div>
-        <svg class="tool-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
+      <div class="section-title">Данные</div>
       <div class="tool-btn" id="exportBtn">
         <div class="setting-row-icon" style="background:var(--mint-soft); color:var(--mint)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -128,39 +163,19 @@
       <div class="section-title">О приложении</div>
       <div class="about">
         <b>Foxint AI</b>
-        OSINT-ассистент для разбора кейсов.
-        <div class="version">● Версия 6.0</div>
+        OSINT-ассистент для разбора кейсов по открытым источникам.
+        <div class="version">● Версия 7.0</div>
       </div>
     </div>
   </div>
 </aside>
-
-<div class="chats-modal" id="chatsModal">
-  <div class="chats-panel">
-    <div class="chats-header">
-      <h2>Диалоги</h2>
-      <button class="close-btn" id="closeChats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    </div>
-    <div class="chats-search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" id="chatsSearch" placeholder="Поиск по диалогам...">
-    </div>
-    <div class="chats-list" id="chatsList"></div>
-    <div class="chats-footer">
-      <button class="new-chat-btn" id="newChatBtn2">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Новый диалог
-      </button>
-    </div>
-  </div>
-</div>
 
 <div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
 
 <div class="app-watermark">redantonov</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="auth.js"></script>
-<script src="app.js"></script>
+<script src="/app/auth.js"></script>
+<script src="/app/app.js"></script>
 </body>
 </html>

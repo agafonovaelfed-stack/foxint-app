@@ -1,6 +1,9 @@
-/* Foxint AI — v17 (mobile optimized) */
+/* Foxint AI — v8 (ChatGPT-style) */
 
-const CONFIG = { PROXY: 'https://foxint-ai-proxy.onrender.com', MODEL: 'GigaChat' };
+const CONFIG = {
+  PROXY: 'https://foxint-ai-proxy.onrender.com',
+  MODEL: 'GigaChat'
+};
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 720;
 
 const SYSTEM_PROMPT = `Ты — Foxint. OSINT-ассистент для расследований, проверки людей и компаний.
@@ -28,21 +31,23 @@ const SYSTEM_PROMPT = `Ты — Foxint. OSINT-ассистент для расс
 4. Живо, без воды. Markdown уместен.`;
 
 const THEMES = {
-  daylight: { name: 'Дневная', particleType: 'none', previewBg: 'linear-gradient(135deg,#fdf9f4 0%,#ffe4d3 50%,#e9dcff 100%)', previewDot: '#ff8b6a', themeColor: '#fdf9f4' },
-  blood:    { name: 'Blood',   particleType: 'blood',  previewBg: 'linear-gradient(135deg,#0a0203 0%,#3a0a10 50%,#7a0010 100%)', previewDot: '#ff2a3a', themeColor: '#0a0203' },
-  ocean:    { name: 'Ocean',   particleType: 'ocean',  previewBg: 'linear-gradient(135deg,#04121f 0%,#0369a1 50%,#22d3ee 100%)', previewDot: '#22d3ee', themeColor: '#04121f' },
-  aurora:   { name: 'Aurora',  particleType: 'aurora', previewBg: 'linear-gradient(135deg,#070a18 0%,#22ffb0 50%,#a855f7 100%)', previewDot: '#22ffb0', themeColor: '#070a18' },
-  sakura:   { name: 'Sakura',  particleType: 'sakura', previewBg: 'linear-gradient(135deg,#1a0d17 0%,#f472b6 50%,#c026d3 100%)', previewDot: '#ff8ab5', themeColor: '#1a0d17' },
-  midnight: { name: 'Midnight',particleType: 'midnight',previewBg: 'linear-gradient(135deg,#050507 0%,#2a2216 50%,#f0c674 100%)', previewDot: '#f0c674', themeColor: '#050507' }
+  deepspace: { name: 'Deep Space', particleType: 'deepspace', previewBg: 'radial-gradient(circle at 30% 30%, #1a2a5a 0%, #05070f 100%)', previewDot: '#5b8dff', themeColor: '#05070f' },
+  ember:     { name: 'Ember',      particleType: 'ember',     previewBg: 'linear-gradient(135deg,#0d0a08 0%,#3a1f10 50%,#ff6b1a 100%)', previewDot: '#ff6b1a', themeColor: '#0d0a08' },
+  blood:     { name: 'Blood',      particleType: 'blood',     previewBg: 'linear-gradient(135deg,#0a0203 0%,#3a0a10 50%,#7a0010 100%)', previewDot: '#ff2a3a', themeColor: '#0a0203' },
+  ocean:     { name: 'Ocean',      particleType: 'ocean',     previewBg: 'linear-gradient(135deg,#04121f 0%,#0369a1 50%,#22d3ee 100%)', previewDot: '#22d3ee', themeColor: '#04121f' },
+  aurora:    { name: 'Aurora',     particleType: 'aurora',    previewBg: 'linear-gradient(135deg,#070a18 0%,#22ffb0 50%,#a855f7 100%)', previewDot: '#22ffb0', themeColor: '#070a18' },
+  sakura:    { name: 'Sakura',     particleType: 'sakura',    previewBg: 'linear-gradient(135deg,#1a0d17 0%,#f472b6 50%,#c026d3 100%)', previewDot: '#ff8ab5', themeColor: '#1a0d17' },
+  midnight:  { name: 'Midnight',   particleType: 'midnight',  previewBg: 'linear-gradient(135deg,#050507 0%,#2a2216 50%,#f0c674 100%)', previewDot: '#f0c674', themeColor: '#050507' }
 };
 
 let chats = [], activeChatId = null, gcToken = null, gcTokenExp = 0;
 let currentMode = 'auto';
 let attachments = [];
 let foxthinkState = null;
+let recognition = null, isRecording = false;
 
 const prefs = {
-  theme: localStorage.getItem('foxint.theme') || 'daylight',
+  theme: localStorage.getItem('foxint.theme') || 'deepspace',
   particles: localStorage.getItem('foxint.particles') !== '0',
   reduceMotion: false
 };
@@ -51,21 +56,26 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtSize = b => b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB';
 
+/* ============ DOM ============ */
 const $ = id => document.getElementById(id);
 const chatEl = $('chat'), input = $('input'), send = $('send');
-const dot = $('dot'), statusText = $('statusText');
+const chatSearchEl = $('chatsSearch'), chatsListEl = $('chatsList');
+const sidebarEl = $('sidebar'), sidebarToggle = $('sidebarToggle'), sidebarClose = $('sidebarClose'), sidebarOverlay = $('sidebarOverlay');
+const newChatBtn = $('newChatBtn'), newChatBtnTop = $('newChatBtnTop');
+const settingsBtn = $('settingsBtn'), settings = $('settings'), backdrop = $('backdrop'), closeSettings = $('closeSettings');
+const themeGrid = $('themeGrid'), switchParticles = $('switchParticles'), switchReduce = $('switchReduce');
+const canvas = $('particles');
 const attachBtn = $('attachBtn'), fileInput = $('fileInput'), attachPreview = $('attachPreview');
-const settingsBtn = $('settingsBtn'), settings = $('settings'), backdrop = $('backdrop');
-const closeSettingsBtn = $('closeSettings'), themeGrid = $('themeGrid');
-const switchParticles = $('switchParticles'), switchReduce = $('switchReduce'), canvas = $('particles');
-const chatsBtn = $('chatsBtn'), chatsBadge = $('chatsBadge'), newChatBtn2 = $('newChatBtn2');
-const chatsModal = $('chatsModal'), closeChats = $('closeChats'), chatsList = $('chatsList');
-const chatsSearch = $('chatsSearch');
-const scrollDownBtn = $('scrollDown');
+const micBtn = $('micBtn'), scrollDownBtn = $('scrollDown');
+const graphSidebarBtn = $('graphSidebarBtn');
+const exportBtn = $('exportBtn'), wipeBtn = $('wipeBtn');
 const lightbox = $('lightbox'), lightboxImg = $('lightboxImg');
+const topbarTitle = $('topbarTitle');
+const userAvatar = $('userAvatar'), userEmail = $('userEmail'), userStatus = $('userStatus'), logoutBtn = $('logoutBtn');
 
-const scrollBottom = () => requestAnimationFrame(() => chatEl.scrollTop = chatEl.scrollHeight);
+const scrollBottom = () => requestAnimationFrame(() => { if (chatEl) chatEl.scrollTop = chatEl.scrollHeight; });
 
+/* ============ УТИЛИТЫ ============ */
 function dateGroup(ts){
   const d = new Date(ts), n = new Date();
   if (d.toDateString() === n.toDateString()) return 'Сегодня';
@@ -96,6 +106,20 @@ function fmtMessage(t){
   return h;
 }
 
+/* ============ САЙДБАР ============ */
+function openSidebar(){
+  sidebarEl.classList.add('open');
+  sidebarOverlay.classList.add('show');
+}
+function closeSidebar(){
+  sidebarEl.classList.remove('open');
+  sidebarOverlay.classList.remove('show');
+}
+if (sidebarToggle) sidebarToggle.addEventListener('click', openSidebar);
+if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
+if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebar);
+
+/* ============ ЧАТЫ ============ */
 async function loadChats(){
   if (window.FoxAuth?.getCurrentUser()){
     try {
@@ -109,10 +133,9 @@ async function loadChats(){
           if (newId) c.id = newId;
         }
         chats = localChats; activeChatId = chats[0].id;
-        console.log('[Foxint] Локальные чаты перенесены в облако:', chats.length);
         return;
       }
-    } catch(e){ console.warn('[Foxint] Облако недоступно:', e.message); }
+    } catch(e){ console.warn('[Foxint] Cloud error:', e.message); }
   }
   try { const r = localStorage.getItem('foxint.chats'); if (r) chats = JSON.parse(r); } catch(_) { chats = []; }
   if (!Array.isArray(chats)) chats = [];
@@ -132,7 +155,7 @@ function saveChats(){
           active.id = newId;
           try { localStorage.setItem('foxint.chats', JSON.stringify(chats)); } catch(_) {}
         }
-      }).catch(e => console.warn('[Foxint] Cloud save error:', e.message));
+      }).catch(e => console.warn('[Foxint] Save error:', e.message));
     }
   }
 }
@@ -140,12 +163,12 @@ function getActiveChat(){ return chats.find(c => c.id === activeChatId); }
 function newChat(){
   const c = { id: uid(), title: 'Новый диалог', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
   chats.unshift(c); activeChatId = c.id;
-  saveChats(); renderChat(); updateBadge(); closeChatsModal();
+  saveChats(); renderChat(); renderChatsList(); closeSidebar();
   if (input) input.focus();
 }
 function switchChat(id){
   if (!chats.find(c => c.id === id)) return;
-  activeChatId = id; saveChats(); renderChat(); updateBadge(); closeChatsModal();
+  activeChatId = id; saveChats(); renderChat(); renderChatsList(); closeSidebar();
 }
 function deleteChat(id, e){
   if (e) e.stopPropagation();
@@ -155,14 +178,17 @@ function deleteChat(id, e){
     const c = { id: uid(), title: 'Новый диалог', messages: [], createdAt: Date.now(), updatedAt: Date.now() };
     chats.push(c); activeChatId = c.id;
   } else if (activeChatId === id) activeChatId = chats[Math.min(i, chats.length-1)].id;
-  saveChats(); renderChat(); renderChatsList(); updateBadge();
+  saveChats(); renderChat(); renderChatsList();
   if (window.FoxAuth?.getCurrentUser()) window.FoxAuth.cloudDeleteChat(id).catch(()=>{});
 }
-function updateBadge(){ chatsBadge.textContent = chats.length; }
+if (newChatBtn) newChatBtn.addEventListener('click', newChat);
+if (newChatBtnTop) newChatBtnTop.addEventListener('click', newChat);
 
+/* ============ РЕНДЕР ЧАТА ============ */
 function renderChat(){
   chatEl.innerHTML = '';
   const c = getActiveChat(); if (!c) return;
+  if (topbarTitle) topbarTitle.textContent = c.title || 'Foxint AI';
   if (!c.messages.length){ chatEl.appendChild(buildWelcome()); return; }
   let ld = null;
   c.messages.forEach((m) => {
@@ -172,13 +198,14 @@ function renderChat(){
   });
   scrollBottom();
 }
+
 function buildWelcome(){
   const w = document.createElement('div');
   w.className = 'welcome';
   w.innerHTML = `
-    <div class="big-logo"><img src="logo.png" alt="Foxint"></div>
+    <div class="big-logo"><img src="/app/logo.png" alt="Foxint"></div>
     <h1>Привет, я <em>Foxint</em></h1>
-    <p>OSINT-ассистент. Проверяй username, IP, email, домены, утечки.</p>
+    <p>OSINT-ассистент. Проверяй username, IP, email, домены и утечки прямо в чате.</p>
     <div class="suggestions">
       <button class="chip" data-q=".u "><span class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="chip-text"><b>Username</b><span>.u ник</span></span></button>
       <button class="chip" data-q=".i 8.8.8.8"><span class="chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/></svg></span><span class="chip-text"><b>IP-разбор</b><span>.i 8.8.8.8</span></span></button>
@@ -198,33 +225,39 @@ function buildWelcome(){
   return w;
 }
 
-function openChatsModal(){ renderChatsList(); chatsModal.classList.add('show'); }
-function closeChatsModal(){ chatsModal.classList.remove('show'); if (chatsSearch) chatsSearch.value = ''; }
 function renderChatsList(){
-  const q = chatsSearch.value.trim().toLowerCase();
+  if (!chatsListEl) return;
+  const q = (chatSearchEl?.value || '').trim().toLowerCase();
   const filtered = q ? chats.filter(c => c.title.toLowerCase().includes(q)) : chats.slice();
-  chatsList.innerHTML = '';
-  if (!filtered.length){ chatsList.innerHTML = '<div class="chats-empty"><div>Ничего не найдено</div></div>'; return; }
+  chatsListEl.innerHTML = '';
+  if (!filtered.length){
+    chatsListEl.innerHTML = '<div class="chats-empty"><div>Ничего не найдено</div></div>';
+    return;
+  }
   filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+  let lg = null;
   filtered.forEach(c => {
+    const g = dateGroup(c.updatedAt);
+    if (g !== lg){ lg = g; const lbl = document.createElement('div'); lbl.className = 'chats-group-label'; lbl.textContent = g; chatsListEl.appendChild(lbl); }
     const item = document.createElement('div');
     item.className = 'chat-item' + (c.id === activeChatId ? ' active' : '');
-    const lm = c.messages.length ? (c.messages[c.messages.length-1].content || '') : 'Пустой диалог';
-    const pv = lm.slice(0, 70);
+    const lm = c.messages.length ? (c.messages[c.messages.length-1].content || '').slice(0, 60) : 'Пустой диалог';
     item.innerHTML = `
-      <div class="chat-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-      <div class="chat-item-info">
+      <div class="chat-item-body">
         <div class="chat-item-title">${esc(c.title)}</div>
-        <div class="chat-item-preview">${esc(pv)}</div>
-        <div class="chat-item-meta"><span>${c.messages.length} сообщ.</span><span>·</span><span>${timeAgo(c.updatedAt)}</span></div>
+        <div class="chat-item-preview">${esc(lm)}</div>
       </div>
-      <div class="chat-item-actions"><button class="chat-item-action danger" data-del="${c.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button></div>`;
+      <button class="chat-item-del" data-del="${c.id}" title="Удалить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>`;
     item.addEventListener('click', e => { if (e.target.closest('[data-del]')) return; switchChat(c.id); });
     item.querySelector('[data-del]').addEventListener('click', e => deleteChat(c.id, e));
-    chatsList.appendChild(item);
+    chatsListEl.appendChild(item);
   });
 }
+if (chatSearchEl) chatSearchEl.addEventListener('input', renderChatsList);
 
+/* ============ ТЕМА ============ */
 function applyTheme(id){
   const t = THEMES[id]; if (!t) return;
   document.body.dataset.theme = id;
@@ -235,69 +268,71 @@ function applyTheme(id){
   setupParticles(t.particleType);
 }
 function buildThemeGrid(){
+  if (!themeGrid) return;
   themeGrid.innerHTML = '';
   Object.entries(THEMES).forEach(([id, t]) => {
     const c = document.createElement('div');
     c.className = 'theme-card' + (prefs.theme === id ? ' active' : '');
     c.dataset.theme = id;
-    c.innerHTML = `<div class="theme-preview" style="--preview-bg:${t.previewBg};--preview-dot:${t.previewDot}"><span class="p-dot p1"></span><span class="p-dot p2"></span><span class="p-dot p3"></span><span class="p-dot p4"></span><span class="p-dot p5"></span></div><div class="theme-name"><span>${t.name}</span><span class="theme-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span></div>`;
+    c.innerHTML = `<div class="theme-preview" style="--preview-bg:${t.previewBg};--preview-dot:${t.previewDot}"><span class="p-dot p1"></span><span class="p-dot p2"></span><span class="p-dot p3"></span><span class="p-dot p4"></span></div><div class="theme-name"><span>${t.name}</span><span class="theme-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span></div>`;
     c.addEventListener('click', () => applyTheme(id));
     themeGrid.appendChild(c);
   });
 }
 
+/* ============ НАСТРОЙКИ ============ */
 function openSettings(){ settings.classList.add('show'); backdrop.classList.add('show'); }
 function closeSettingsPanel(){ settings.classList.remove('show'); backdrop.classList.remove('show'); }
-settingsBtn.addEventListener('click', openSettings);
-closeSettingsBtn.addEventListener('click', closeSettingsPanel);
-backdrop.addEventListener('click', closeSettingsPanel);
-switchParticles.addEventListener('click', () => {
+if (settingsBtn) settingsBtn.addEventListener('click', openSettings);
+if (closeSettings) closeSettings.addEventListener('click', closeSettingsPanel);
+if (backdrop) backdrop.addEventListener('click', closeSettingsPanel);
+if (switchParticles) switchParticles.addEventListener('click', () => {
   prefs.particles = !prefs.particles;
   switchParticles.classList.toggle('on', prefs.particles);
   try { localStorage.setItem('foxint.particles', prefs.particles ? '1' : '0'); } catch(_) {}
   updateParticlesVisibility();
 });
-switchReduce.addEventListener('click', () => {
+if (switchReduce) switchReduce.addEventListener('click', () => {
   prefs.reduceMotion = !prefs.reduceMotion;
   switchReduce.classList.toggle('on', prefs.reduceMotion);
   updateParticlesVisibility();
 });
 
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('#graphBtn, #exportBtn, #wipeBtn');
+  const btn = e.target.closest('#exportBtn, #wipeBtn, #graphSidebarBtn');
   if (!btn) return;
   e.preventDefault();
-  if (btn.id === 'graphBtn') openGraphScreen();
+  if (btn.id === 'graphSidebarBtn') openGraphScreen();
   else if (btn.id === 'exportBtn') openExportMenu();
   else if (btn.id === 'wipeBtn') openWipeConfirm();
 });
 
-document.querySelectorAll('.mode-pill').forEach(m => {
-  m.addEventListener('click', () => {
-    document.querySelectorAll('.mode-pill').forEach(x => x.classList.remove('active'));
-    m.classList.add('active');
-    currentMode = m.dataset.m;
-    setStatus(true, 'режим: ' + currentMode);
-    setTimeout(() => setStatus(true, 'готова'), 1200);
-  });
-});
-
+/* ============ ЧАСТИЦЫ (7 тем) ============ */
 const particles = {
   ctx: canvas.getContext('2d'),
   dpr: Math.min(window.devicePixelRatio || 1, 2),
   items: [], type: 'none', raf: null, w: 0, h: 0,
-  resize(){ this.w = innerWidth; this.h = innerHeight; canvas.width = this.w * this.dpr; canvas.height = this.h * this.dpr; canvas.style.width = this.w+'px'; canvas.style.height = this.h+'px'; this.ctx.setTransform(this.dpr,0,0,this.dpr,0,0); },
+  resize(){
+    this.w = innerWidth; this.h = innerHeight;
+    canvas.width = this.w * this.dpr;
+    canvas.height = this.h * this.dpr;
+    canvas.style.width = this.w + 'px';
+    canvas.style.height = this.h + 'px';
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  },
   spawn(t){
     this.type = t; this.resize(); this.items = [];
     if (t === 'none') return;
     const a = this.w * this.h;
-    const density = IS_MOBILE ? 16000 : 8000;
+    const dens = IS_MOBILE ? 16000 : 8000;
     let n = 0;
-    if (t === 'blood') n = Math.min(IS_MOBILE ? 60 : 130, a/density|0);
-    if (t === 'ocean') n = Math.min(IS_MOBILE ? 50 : 110, a/(density*1.2)|0);
-    if (t === 'aurora') n = Math.min(IS_MOBILE ? 70 : 160, a/(density*0.9)|0);
-    if (t === 'sakura') n = Math.min(IS_MOBILE ? 35 : 70, a/(density*1.8)|0);
-    if (t === 'midnight') n = Math.min(IS_MOBILE ? 45 : 100, a/(density*1.4)|0);
+    if (t === 'blood') n = Math.min(IS_MOBILE ? 60 : 130, a/dens|0);
+    if (t === 'ocean') n = Math.min(IS_MOBILE ? 50 : 110, a/(dens*1.2)|0);
+    if (t === 'aurora') n = Math.min(IS_MOBILE ? 70 : 160, a/(dens*0.9)|0);
+    if (t === 'sakura') n = Math.min(IS_MOBILE ? 35 : 70, a/(dens*1.8)|0);
+    if (t === 'midnight') n = Math.min(IS_MOBILE ? 45 : 100, a/(dens*1.4)|0);
+    if (t === 'deepspace') n = Math.min(IS_MOBILE ? 60 : 130, a/dens|0);
+    if (t === 'ember') n = Math.min(IS_MOBILE ? 50 : 110, a/(dens*1.1)|0);
     for (let i = 0; i < n; i++) this.items.push(this.one(t));
   },
   one(t){
@@ -307,20 +342,22 @@ const particles = {
     if (t === 'aurora'){ const s = Math.random()<0.15; return { x:r(0,this.w), y:r(0,this.h), r:s?3:r(1.2,3.5), vy:s?-r(0.5,1.3):r(-0.15,0.15), vx:r(-0.35,0.35), a:r(0.5,1), hue:r(150,270), ph:r(0,6.28), streamer:s }; }
     if (t === 'sakura') return { x:r(0,this.w), y:r(0,this.h), r:r(4,9), vy:r(0.5,1.4), vx:r(-0.35,0.35), a:r(0.6,1), hue:r(330,350), rot:r(0,6.28), vrot:r(-0.05,0.05), sway:r(0,6.28), ss:r(0.012,0.03) };
     if (t === 'midnight') return { x:r(0,this.w), y:r(0,this.h), r:r(1.2,3.5), vy:-r(0.25,0.9), vx:r(-0.15,0.15), a:r(0.6,1), hue:r(40,55), ph:r(0,6.28) };
+    if (t === 'deepspace') return { x:r(0,this.w), y:r(0,this.h), r:r(0.6,2.2), vy:r(0.08,0.3), vx:r(-0.08,0.08), a:r(0.5,1), hue:r(200,260), ph:r(0,6.28) };
+    if (t === 'ember') return { x:r(0,this.w), y:r(0,this.h), r:r(1.5,4), vy:-r(0.3,1.2), vx:r(-0.3,0.3), a:r(0.5,1), hue:r(15,40), ph:r(0,6.28) };
   },
   draw(){
     const { ctx, w, h } = this;
-    ctx.clearRect(0,0,w,h);
+    ctx.clearRect(0, 0, w, h);
     const t = Date.now()/1000;
     for (const p of this.items){
       p.x += p.vx; p.y += p.vy;
       if (p.sway !== undefined){ p.sway += p.ss; p.x += Math.sin(p.sway)*0.5; }
       if (p.rot !== undefined) p.rot += p.vrot;
-      if (p.y > h+15){ p.y=-15; p.x=Math.random()*w; }
-      if (p.y < -15){ p.y=h+15; p.x=Math.random()*w; }
-      if (p.x > w+15) p.x=-15;
-      if (p.x < -15) p.x=w+15;
-      const tw = 0.8 + 0.2*Math.sin(t*1.5+(p.ph||0));
+      if (p.y > h + 15){ p.y = -15; p.x = Math.random()*w; }
+      if (p.y < -15){ p.y = h + 15; p.x = Math.random()*w; }
+      if (p.x > w + 15) p.x = -15;
+      if (p.x < -15) p.x = w + 15;
+      const tw = 0.75 + 0.25*Math.sin(t*1.5 + (p.ph||0));
       const al = p.a * tw;
       if (this.type === 'sakura'){
         ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
@@ -365,8 +402,9 @@ function setupParticles(type){ particles.spawn(type); updateParticlesVisibility(
 let rt;
 addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (particles.type && particles.type !== 'none') particles.spawn(particles.type); }, 200); });
 
-attachBtn.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', async e => {
+/* ============ ВЛОЖЕНИЯ ============ */
+if (attachBtn) attachBtn.addEventListener('click', () => fileInput.click());
+if (fileInput) fileInput.addEventListener('change', async e => {
   const fs = Array.from(e.target.files || []);
   for (const f of fs) await addAttachment(f);
   fileInput.value = ''; renderAttachPreview(); updateSend();
@@ -384,6 +422,7 @@ function isTextLike(f){
 }
 function readAsText(f){ return new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsText(f); }); }
 function renderAttachPreview(){
+  if (!attachPreview) return;
   if (!attachments.length){ attachPreview.classList.remove('show'); attachPreview.innerHTML=''; return; }
   attachPreview.classList.add('show'); attachPreview.innerHTML = '';
   attachments.forEach(a => {
@@ -398,33 +437,39 @@ function renderAttachPreview(){
   });
 }
 
-input.addEventListener('input', () => {
+/* ============ INPUT ============ */
+if (input) input.addEventListener('input', () => {
   input.style.height = 'auto';
-  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  input.style.height = Math.min(input.scrollHeight, 160) + 'px';
   updateSend();
 });
-input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !IS_MOBILE){ e.preventDefault(); sendMsg(); } });
-input.addEventListener('focus', () => {
-  setTimeout(() => { if (IS_MOBILE) input.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, 300);
+if (input) input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !IS_MOBILE){ e.preventDefault(); sendMsg(); }
 });
-send.addEventListener('click', sendMsg);
-function updateSend(){ send.disabled = !input.value.trim() && attachments.length === 0; }
-function setStatus(ok, text){ if (dot) dot.classList.toggle('off', !ok); if (statusText) statusText.textContent = text; }
+if (send) send.addEventListener('click', sendMsg);
+function updateSend(){ if (send) send.disabled = !input.value.trim() && attachments.length === 0; }
 
+/* ============ СООБЩЕНИЯ ============ */
 function appendMsg(role, text, opts = {}){
   const d = document.createElement('div');
   d.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
-  const av = document.createElement('div'); av.className = 'avatar';
+
+  const av = document.createElement('div');
+  av.className = 'msg-avatar';
   if (role === 'user') av.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-  else av.innerHTML = `<img src="logo.png" alt="">`;
-  const b = document.createElement('div'); b.className = 'bubble';
+  else av.innerHTML = `<img src="/app/logo.png" alt="">`;
+
+  const b = document.createElement('div');
+  b.className = 'msg-bubble';
   b.innerHTML = opts.raw ? text : (role === 'user' ? esc(text) : fmtMessage(text));
+
   d.appendChild(av); d.appendChild(b);
   chatEl.appendChild(d);
   if (window.Prism) setTimeout(() => Prism.highlightAllUnder(b), 0);
   scrollBottom();
 }
 
+/* ============ FOXTHINK ============ */
 function detectScenario(text, mode){
   const t = (text||'').toLowerCase();
   if (/^\.u\s/.test(text) || /^\.i\s/.test(text) || /^\.e\s/.test(text) || /^\.d\s/.test(text) || /^\.b\s/.test(text)) return 'osint';
@@ -446,7 +491,7 @@ function showTyping(userText){
   const stages = buildStages(detectScenario(userText||'', currentMode), userText||'');
   const d = document.createElement('div');
   d.className = 'msg ai foxthink-msg'; d.id = 'typing';
-  d.innerHTML = `<div class="avatar"><img src="logo.png" alt=""></div><div class="bubble foxthink-bubble"><div class="foxthink-header"><div class="foxthink-title"><span class="foxthink-dot"></span>FoxThink</div><div class="foxthink-timer" id="foxthinkTimer">0.0s</div></div><div class="foxthink-stages" id="foxthinkStages"></div></div>`;
+  d.innerHTML = `<div class="msg-avatar"><img src="/app/logo.png" alt=""></div><div class="msg-bubble foxthink-bubble"><div class="foxthink-header"><div class="foxthink-title"><span class="foxthink-dot"></span>FoxThink</div><div class="foxthink-timer" id="foxthinkTimer">0.0s</div></div><div class="foxthink-stages" id="foxthinkStages"></div></div>`;
   chatEl.appendChild(d); scrollBottom();
   const stagesEl = document.getElementById('foxthinkStages');
   const timerEl = document.getElementById('foxthinkTimer');
@@ -490,11 +535,12 @@ function hideTyping(){
   foxthinkState = null;
 }
 
-async function osintUsername(u){ const r = await fetch(`${CONFIG.PROXY}/osint/username?u=${encodeURIComponent(u)}`); return r.json(); }
-async function osintEmail(e){ const r = await fetch(`${CONFIG.PROXY}/osint/email?email=${encodeURIComponent(e)}`); return r.json(); }
-async function osintDomain(d){ const r = await fetch(`${CONFIG.PROXY}/osint/domain?d=${encodeURIComponent(d)}`); return r.json(); }
-async function osintIp(ip){ const r = await fetch(`${CONFIG.PROXY}/osint/ip?ip=${encodeURIComponent(ip)}`); return r.json(); }
-async function osintBreaches(e){ const r = await fetch(`${CONFIG.PROXY}/osint/breaches?email=${encodeURIComponent(e)}`); return r.json(); }
+/* ============ OSINT ============ */
+async function osintUsername(u){ const r = await fetch(`${CONFIG.PROXY}/osint/username?u=${encodeURIComponent(u)}`); if (!r.ok) throw new Error('http '+r.status); return r.json(); }
+async function osintEmail(e){ const r = await fetch(`${CONFIG.PROXY}/osint/email?email=${encodeURIComponent(e)}`); if (!r.ok) throw new Error('http '+r.status); return r.json(); }
+async function osintDomain(d){ const r = await fetch(`${CONFIG.PROXY}/osint/domain?d=${encodeURIComponent(d)}`); if (!r.ok) throw new Error('http '+r.status); return r.json(); }
+async function osintIp(ip){ const r = await fetch(`${CONFIG.PROXY}/osint/ip?ip=${encodeURIComponent(ip)}`); if (!r.ok) throw new Error('http '+r.status); return r.json(); }
+async function osintBreaches(e){ const r = await fetch(`${CONFIG.PROXY}/osint/breaches?email=${encodeURIComponent(e)}`); if (!r.ok) throw new Error('http '+r.status); return r.json(); }
 
 function renderUsernameResult(d){
   const found = d.results.filter(x => x.found);
@@ -535,6 +581,7 @@ function renderBreachResult(d){
   return h + '</ol></div>';
 }
 
+/* ============ GIGACHAT ============ */
 async function gcGetToken(){
   if (gcToken && Date.now() < gcTokenExp - 60000) return gcToken;
   const r = await fetch(`${CONFIG.PROXY}/oauth`, { method: 'POST' });
@@ -563,6 +610,7 @@ async function askGigaChat(text){
   return d.choices?.[0]?.message?.content || 'Пустой ответ';
 }
 
+/* ============ ЭКСПОРТ / WIPE ============ */
 function openExportMenu(){
   closeSettingsPanel();
   let menu = document.getElementById('exportMenu');
@@ -594,7 +642,6 @@ async function exportChat(fmt){
   URL.revokeObjectURL(a.href);
   closeExportMenu();
 }
-
 function openWipeConfirm(){
   closeSettingsPanel();
   let modal = document.getElementById('wipeConfirm');
@@ -611,13 +658,12 @@ function openWipeConfirm(){
   modal.classList.add('show');
 }
 
+/* ============ ГРАФ ============ */
 const graphState = {
-  nodes: [], edges: [], selectedNode: null, selectedEdge: null,
-  dragging: null, linking: null, drawingLink: null, nextId: 1,
-  canvas: null, ctx: null, width: 0, height: 0,
+  nodes: [], edges: [], selectedNode: null, dragging: null,
+  nextId: 1, canvas: null, ctx: null, width: 0, height: 0,
   panX: 0, panY: 0, zoom: 1, panning: false, panStart: null,
-  hoverNode: null, hoverEdge: null,
-  colors: ['#4a4a5e','#6a6a80','#8a8aa0','#a78bfa','#60a5fa','#34d399','#fbbf24','#f472b6','#f87171','#22d3ee']
+  colors: ['#4a4a5e','#6a6a80','#8a8aa0','#a78bfa','#60a5fa','#34d399','#fbbf24','#f472b6']
 };
 const NODE_W = 90, NODE_H = 40, NODE_PAD_X = 22;
 function nodeBounds(n){
@@ -639,25 +685,14 @@ function openGraphScreen(){
           <button class="graph-btn" id="graphAutoLayout">Раскладка</button>
           <button class="graph-btn" id="graphReset">Сброс</button>
           <button class="graph-btn" id="graphExportPng">PNG</button>
-          <button class="graph-btn" id="graphExportJson">JSON</button>
           <button class="graph-btn graph-btn-close" id="graphClose">×</button>
         </div>
       </div>
-      <button class="graph-sidebar-toggle" id="graphSidebarToggle">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-      </button>
+      <button class="graph-sidebar-toggle" id="graphSidebarToggleBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <div class="graph-hint">Двойной клик — нода · Shift+клик — связь · Правый клик — меню</div>
-      <div class="graph-body">
-        <canvas id="graphCanvas"></canvas>
-        <aside class="graph-sidebar" id="graphSidebar">
-          <div class="graph-sidebar-section"><div class="graph-sidebar-title">Поиск</div><input class="graph-search" id="graphSearch" placeholder="Найти ноду..."></div>
-          <div class="graph-sidebar-section"><div class="graph-sidebar-title">Ноды (<span id="graphNodesCount">0</span>)</div><div class="graph-nodes-list" id="graphNodesList"></div></div>
-          <div class="graph-sidebar-section" id="graphInspector"><div class="graph-sidebar-title">Свойства</div><div class="graph-inspector-empty">Выбери ноду</div></div>
-        </aside>
-      </div>`;
+      <div class="graph-body"><canvas id="graphCanvas"></canvas></div>`;
     document.body.appendChild(screen);
     initGraphEvents();
-    if (!IS_MOBILE) document.getElementById('graphSidebar').classList.add('open');
   }
   screen.classList.add('show');
   requestAnimationFrame(() => { resizeGraphCanvas(); drawGraph(); });
@@ -676,7 +711,7 @@ function resizeGraphCanvas(){
   drawGraph();
 }
 function addNodeAt(x, y, label, color){
-  const n = { id: graphState.nextId++, x, y, vx: 0, vy: 0, label: label || ('Нода ' + (graphState.nodes.length + 1)), color: color || '#4a4a5e', note: '' };
+  const n = { id: graphState.nextId++, x, y, vx: 0, vy: 0, label: label || ('Нода ' + (graphState.nodes.length + 1)), color: color || '#4a4a5e' };
   graphState.nodes.push(n); updateGraphStats(); return n;
 }
 function addEdge(a, b){
@@ -688,13 +723,10 @@ function addEdge(a, b){
 function updateGraphStats(){
   const el = document.getElementById('graphStats');
   if (el) el.textContent = graphState.nodes.length + ' нод · ' + graphState.edges.length + ' рёбер';
-  const nc = document.getElementById('graphNodesCount');
-  if (nc) nc.textContent = graphState.nodes.length;
 }
 function roundRect(ctx, x, y, w, h, r){
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
   ctx.quadraticCurveTo(x + w, y, x + w, y + r);
   ctx.lineTo(x + w, y + h - r);
   ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
@@ -703,16 +735,6 @@ function roundRect(ctx, x, y, w, h, r){
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
-}
-function edgePoint(n, tx, ty){
-  const b = nodeBounds(n);
-  const dx = tx - n.x, dy = ty - n.y;
-  if (dx === 0 && dy === 0) return { x: n.x, y: n.y };
-  const halfW = b.w / 2, halfH = b.h / 2;
-  const scaleX = halfW / Math.abs(dx || 0.0001);
-  const scaleY = halfH / Math.abs(dy || 0.0001);
-  const t = Math.min(scaleX, scaleY);
-  return { x: n.x + dx * t, y: n.y + dy * t };
 }
 function drawGraph(){
   const ctx = graphState.ctx; if (!ctx) return;
@@ -732,10 +754,8 @@ function drawGraph(){
     const a = graphState.nodes.find(n => n.id === e.a);
     const b = graphState.nodes.find(n => n.id === e.b);
     if (!a || !b) continue;
-    const pa = edgePoint(a, b.x, b.y);
-    const pb = edgePoint(b, a.x, a.y);
     ctx.strokeStyle = e.color; ctx.lineWidth = e.width;
-    ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   for (const n of graphState.nodes){
     const isSel = graphState.selectedNode?.id === n.id;
@@ -815,41 +835,10 @@ function initGraphEvents(){
       graphState.selectedNode = null; updateGraphStats(); drawGraph();
     }
   });
-  // Touch
-  let touchStartDist = 0, touchStartZoom = 1;
-  canvas.addEventListener('touchstart', e => {
-    const r = canvas.getBoundingClientRect();
-    if (e.touches.length === 2){
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      touchStartDist = Math.hypot(dx, dy);
-      touchStartZoom = graphState.zoom;
-      return;
-    }
-    const t = e.touches[0];
-    const x = t.clientX - r.left, y = t.clientY - r.top;
-    const n = hitNode(x, y);
-    if (n){ graphState.selectedNode = n; graphState.dragging = n; }
-    else { graphState.selectedNode = null; graphState.panning = true; panStartX = t.clientX; panStartY = t.clientY; startPanX = graphState.panX; startPanY = graphState.panY; }
+  document.getElementById('graphAddNode').addEventListener('click', () => {
+    addNodeAt(graphState.width/2 + (Math.random()-0.5)*200, graphState.height/2 + (Math.random()-0.5)*200);
     drawGraph();
-  }, { passive: true });
-  canvas.addEventListener('touchmove', e => {
-    const r = canvas.getBoundingClientRect();
-    if (e.touches.length === 2 && touchStartDist){
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.hypot(dx, dy);
-      graphState.zoom = Math.max(0.25, Math.min(3, touchStartZoom * (dist / touchStartDist)));
-      drawGraph();
-      return;
-    }
-    const t = e.touches[0];
-    if (graphState.panning){ graphState.panX = startPanX + (t.clientX - panStartX); graphState.panY = startPanY + (t.clientY - panStartY); drawGraph(); }
-    else if (graphState.dragging){ graphState.dragging.x = (t.clientX - r.left - graphState.panX) / graphState.zoom; graphState.dragging.y = (t.clientY - r.top - graphState.panY) / graphState.zoom; drawGraph(); }
-  }, { passive: true });
-  canvas.addEventListener('touchend', () => { graphState.dragging = null; graphState.panning = false; touchStartDist = 0; drawGraph(); });
-
-  document.getElementById('graphAddNode').addEventListener('click', () => { addNodeAt(graphState.width/2 + (Math.random()-0.5)*200, graphState.height/2 + (Math.random()-0.5)*200); drawGraph(); });
+  });
   document.getElementById('graphAutoLayout').addEventListener('click', () => {
     const nodes = graphState.nodes; if (nodes.length < 2) return;
     const cx = graphState.width/2, cy = graphState.height/2;
@@ -864,52 +853,56 @@ function initGraphEvents(){
     a.download = 'foxint-graph-' + Date.now() + '.png';
     a.click();
   });
-  document.getElementById('graphExportJson').addEventListener('click', () => {
-    const data = JSON.stringify({ nodes: graphState.nodes, edges: graphState.edges }, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'foxint-graph-' + Date.now() + '.json';
-    a.click(); URL.revokeObjectURL(a.href);
-  });
   document.getElementById('graphClose').addEventListener('click', closeGraphScreen);
-  document.getElementById('graphSidebarToggle').addEventListener('click', () => {
-    document.getElementById('graphSidebar').classList.toggle('open');
-  });
-  document.getElementById('graphSearch').addEventListener('input', () => {
-    const q = document.getElementById('graphSearch').value.trim().toLowerCase();
-    const list = document.getElementById('graphNodesList');
-    list.innerHTML = '';
-    const filtered = q ? graphState.nodes.filter(n => n.label.toLowerCase().includes(q)) : graphState.nodes;
-    filtered.forEach(n => {
-      const item = document.createElement('div');
-      item.className = 'graph-node-item' + (graphState.selectedNode?.id === n.id ? ' active' : '');
-      item.innerHTML = `<span class="graph-node-dot" style="background:${n.color}"></span><span class="graph-node-name">${esc(n.label)}</span>`;
-      item.addEventListener('click', () => { graphState.selectedNode = n; drawGraph(); });
-      list.appendChild(item);
-    });
+  const toggleBtn = document.getElementById('graphSidebarToggleBtn');
+  if (toggleBtn) toggleBtn.addEventListener('click', () => {
+    const sb = document.getElementById('graphSidebar');
+    if (sb) sb.classList.toggle('open');
   });
   window.addEventListener('resize', resizeGraphCanvas);
 }
 
-chatEl.addEventListener('scroll', () => {
+/* ============ SCROLL DOWN ============ */
+if (chatEl) chatEl.addEventListener('scroll', () => {
   const nearBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 200;
-  scrollDownBtn.classList.toggle('show', !nearBottom);
+  if (scrollDownBtn) scrollDownBtn.classList.toggle('show', !nearBottom);
 });
-scrollDownBtn.addEventListener('click', () => scrollBottom());
+if (scrollDownBtn) scrollDownBtn.addEventListener('click', () => scrollBottom());
 
-chatsBtn.addEventListener('click', openChatsModal);
-closeChats.addEventListener('click', closeChatsModal);
-chatsModal.addEventListener('click', e => { if (e.target === chatsModal) closeChatsModal(); });
-newChatBtn2.addEventListener('click', newChat);
-chatsSearch.addEventListener('input', renderChatsList);
+/* ============ ГОЛОС ============ */
+function initVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const rec = new SR();
+  rec.lang = 'ru-RU'; rec.interimResults = true; rec.continuous = false;
+  return rec;
+}
+function toggleVoice(){
+  if (!recognition) recognition = initVoice();
+  if (!recognition){ alert('Голосовой ввод не поддерживается'); return; }
+  if (isRecording){ recognition.stop(); return; }
+  isRecording = true;
+  if (micBtn) micBtn.classList.add('active');
+  recognition.start();
+  recognition.onresult = (e) => {
+    let txt = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    input.value = txt; input.dispatchEvent(new Event('input'));
+  };
+  recognition.onerror = () => stopVoice();
+  recognition.onend = () => stopVoice();
+}
+function stopVoice(){ isRecording = false; if (micBtn) micBtn.classList.remove('active'); }
+if (micBtn) micBtn.addEventListener('click', toggleVoice);
 
+/* ============ ОТПРАВКА ============ */
 async function sendMsg(){
   const text = input.value.trim();
   if (!text && !attachments.length) return;
   const c = getActiveChat(); if (!c) return;
   input.value = ''; input.style.height = 'auto'; send.disabled = true;
 
+  /* OSINT-команды */
   const cmds = [
     { p: '.u ', fn: osintUsername, r: renderUsernameResult, l: 'Username' },
     { p: '.i ', fn: osintIp,       r: renderIpResult,       l: 'IP' },
@@ -923,7 +916,7 @@ async function sendMsg(){
       if (!val) return;
       if (c.messages.length === 0) c.title = cmd.l + ': ' + val;
       c.messages.push({ role: 'user', content: text, ts: Date.now() });
-      chatEl.innerHTML = ''; renderChat();
+      renderChat(); renderChatsList();
       showTyping(text);
       try {
         const d = await cmd.fn(val);
@@ -931,35 +924,53 @@ async function sendMsg(){
         const html = cmd.r(d);
         appendMsg('ai', html, { raw: true });
         c.messages.push({ role: 'assistant', content: html, ts: Date.now(), raw: true });
-        c.updatedAt = Date.now(); saveChats();
-      } catch(e){ hideTyping(); appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true }); }
+        c.updatedAt = Date.now(); saveChats(); renderChatsList();
+      } catch(e){
+        hideTyping();
+        const errHtml = `<div class="osint-result"><div class="osint-empty">Ошибка: ${esc(e.message)}</div></div>`;
+        appendMsg('ai', errHtml, { raw: true });
+        c.messages.push({ role: 'assistant', content: errHtml, ts: Date.now(), raw: true });
+        saveChats();
+      }
       updateSend(); return;
     }
   }
 
+  /* Обычное сообщение */
   if (c.messages.length === 0) c.title = text ? text.slice(0, 32) : 'Файл';
   c.messages.push({ role: 'user', content: text || '[файл]', ts: Date.now() });
-  c.updatedAt = Date.now(); saveChats(); updateBadge();
-  chatEl.innerHTML = ''; renderChat();
+  c.updatedAt = Date.now();
+  renderChat(); renderChatsList(); updateSend(); saveChats();
   showTyping(text);
   try {
     const reply = await askGigaChat(text);
     hideTyping();
     appendMsg('ai', reply);
     c.messages.push({ role: 'assistant', content: reply, ts: Date.now() });
-    c.updatedAt = Date.now(); saveChats();
-  } catch(e){ hideTyping(); setStatus(false, 'ошибка'); appendMsg('ai', 'Ошибка: ' + esc(e.message), { raw: true }); }
-  finally { attachments = []; renderAttachPreview(); updateSend(); }
+    c.updatedAt = Date.now();
+    saveChats();
+    renderChatsList();
+  } catch(e){
+    hideTyping();
+    const errMsg = 'Ошибка: ' + e.message;
+    appendMsg('ai', errMsg, { raw: true });
+    c.messages.push({ role: 'assistant', content: errMsg, ts: Date.now(), raw: true });
+    c.updatedAt = Date.now();
+    saveChats();
+  } finally {
+    attachments = []; renderAttachPreview(); updateSend();
+  }
 }
 
+/* ============ INIT ============ */
 buildThemeGrid();
-switchParticles.classList.toggle('on', prefs.particles);
+if (switchParticles) switchParticles.classList.toggle('on', prefs.particles);
 applyTheme(prefs.theme);
 
 async function bootApp(user){
   await loadChats();
-  renderChat(); updateBadge();
-  setStatus(!!CONFIG.PROXY, CONFIG.PROXY ? 'готова' : 'демо');
+  renderChat(); renderChatsList();
+  updateProfileUI(user);
 }
 
 if (window.FoxAuth){
@@ -971,22 +982,22 @@ if (window.FoxAuth){
 }
 
 function updateProfileUI(user){
-  const section = document.getElementById('profileSection');
-  const card = document.getElementById('profileCard');
-  const logout = document.getElementById('logoutBtn');
-  if (!section) return;
-  if (!user){ section.style.display = 'none'; return; }
-  section.style.display = 'block';
-  const initial = (user.email || '?')[0].toUpperCase();
-  card.innerHTML = `<div class="profile-avatar">${initial}</div><div class="profile-info"><div class="profile-email">${esc(user.email || 'пользователь')}</div><div class="profile-status">Синхронизировано с облаком</div></div>`;
-  if (logout && !logout._wired){
-    logout._wired = true;
-    logout.addEventListener('click', async () => {
-      await window.FoxAuth.signOut();
-      chats = []; activeChatId = null; saveChats();
-      window.FoxAuth.showAuthScreen();
-    });
+  if (!user){
+    if (userEmail) userEmail.textContent = 'Гость';
+    if (userAvatar) userAvatar.textContent = '?';
+    if (userStatus) userStatus.textContent = 'локальный режим';
+    return;
   }
+  if (userEmail) userEmail.textContent = user.email || 'пользователь';
+  if (userAvatar) userAvatar.textContent = (user.email || '?')[0].toUpperCase();
+  if (userStatus) userStatus.textContent = 'синхронизировано';
 }
+if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+  if (window.FoxAuth){
+    await window.FoxAuth.signOut();
+    chats = []; activeChatId = null; saveChats();
+    window.FoxAuth.showAuthScreen();
+  }
+});
 
-window.addEventListener('load', () => { if (input && !IS_MOBILE) input.focus(); });
+addEventListener('load', () => { if (input && !IS_MOBILE) input.focus(); });

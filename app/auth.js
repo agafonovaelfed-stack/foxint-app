@@ -1,4 +1,4 @@
-/* Foxint AI — Auth (Supabase) */
+/* Foxint AI — Auth (Supabase) — v2 */
 
 const SUPABASE_URL = 'https://umvpifjfjiwnqhvwnzbt.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtdnBpZmpmaml3bnFodnduemJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNTAyMzMsImV4cCI6MjEwNDcyNjIzM30.TS77IJy8zDCADVsmdqfiWlGIKdSyFd0_ssSMT85vRdk';
@@ -20,7 +20,8 @@ async function initSupabase(){
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
-      storage: window.localStorage
+      storage: window.localStorage,
+      storageKey: 'foxint-auth'
     }
   });
   return supabase;
@@ -53,9 +54,7 @@ async function signOut(){
   fireAuth('onLogout');
 }
 
-function getCurrentUser(){
-  return currentUser;
-}
+function getCurrentUser(){ return currentUser; }
 
 function translateError(msg){
   const map = {
@@ -64,12 +63,13 @@ function translateError(msg){
     'Password should be at least 6 characters': 'Пароль должен быть не короче 6 символов',
     'Unable to validate email address: invalid format': 'Неверный формат email',
     'Email not confirmed': 'Email не подтверждён',
-    'signup disabled': 'Регистрация временно отключена'
+    'signup disabled': 'Регистрация временно отключена',
+    'Failed to fetch': 'Нет соединения с сервером. Проверь интернет.'
   };
   return map[msg] || msg;
 }
 
-/* === Чаты в облаке === */
+/* ============ ЧАТЫ В ОБЛАКЕ ============ */
 async function cloudLoadChats(){
   await initSupabase();
   const { data, error } = await supabase
@@ -86,6 +86,8 @@ async function cloudLoadChats(){
   }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function cloudSaveChat(chat){
   await initSupabase();
   const user = getCurrentUser();
@@ -96,9 +98,7 @@ async function cloudSaveChat(chat){
     messages: chat.messages || [],
     updated_at: new Date().toISOString()
   };
-  // Если chat.id похож на UUID (создан сервером) — update
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chat.id);
-  if (isUuid){
+  if (UUID_RE.test(chat.id)){
     const { error } = await supabase.from('chats').update(payload).eq('id', chat.id);
     if (error) throw new Error(error.message);
     return chat.id;
@@ -111,23 +111,20 @@ async function cloudSaveChat(chat){
 
 async function cloudDeleteChat(id){
   await initSupabase();
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  if (!isUuid) return;
+  if (!UUID_RE.test(id)) return;
   await supabase.from('chats').delete().eq('id', id);
 }
 
-/* === UI экрана логина === */
+/* ============ UI ЭКРАНА ЛОГИНА ============ */
 function showAuthScreen(){
   let screen = document.getElementById('authScreen');
-  if (screen) { screen.classList.add('show'); return; }
+  if (screen){ screen.classList.add('show'); return; }
   screen = document.createElement('div');
   screen.className = 'auth-screen';
   screen.id = 'authScreen';
   screen.innerHTML = `
     <div class="auth-card">
-      <div class="auth-logo">
-        <img src="logo.png" alt="Foxint">
-      </div>
+      <div class="auth-logo"><img src="/app/logo.png" alt="Foxint"></div>
       <div class="auth-title">Foxint AI</div>
       <div class="auth-sub">Войди, чтобы синхронизировать чаты между устройствами</div>
 
@@ -177,7 +174,6 @@ function showAuthScreen(){
         await signIn(email, password);
       } else {
         await signUp(email, password);
-        // После регистрации сразу логиним
         await signIn(email, password);
       }
       hideAuthScreen();
@@ -199,17 +195,15 @@ function hideAuthScreen(){
   if (s){ s.classList.remove('show'); setTimeout(() => s.remove(), 400); }
 }
 
-/* === Запуск === */
+/* ============ ЗАПУСК ============ */
 async function bootAuth(){
   try {
     await initSupabase();
-    // Слушаем изменения сессии
     supabase.auth.onAuthStateChange(async (_event, session) => {
       currentUser = session?.user || null;
       if (currentUser) fireAuth('onLogin', currentUser);
       else fireAuth('onLogout');
     });
-    // Проверяем текущую сессию
     const session = await getSession();
     if (session?.user){
       currentUser = session.user;
